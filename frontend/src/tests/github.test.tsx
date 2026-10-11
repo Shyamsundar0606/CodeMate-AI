@@ -412,3 +412,51 @@ it("validates routes and authorization destinations", () => {
   expect(runLabel("completed", "failure")).toBe("failure");
   expect(runLabel("in_progress", null)).toBe("in progress");
 });
+
+it.each(["success", "failure"])("enables completed %s job logs without logs_url", async (conclusion) => {
+  state.query += "&owner=octocat&repo=secure-demo";
+  get.mockImplementation((path: string) => {
+    const data = fixture(path);
+    if (path.includes("/jobs") && !path.includes("/logs")) {
+      return Promise.resolve(page([{ ...((data as ReturnType<typeof page>).items[0] as object), conclusion, name: "Backend checks" }]));
+    }
+    return Promise.resolve(data);
+  });
+  mount(<RunInvestigation />);
+  const button = await screen.findByRole("button", { name: "View logs for Backend checks" });
+  expect(button).toBeEnabled();
+  expect(button).toHaveAttribute("type", "button");
+  expect(get.mock.calls.some(([path]) => path.includes("/logs"))).toBe(false);
+  await userEvent.click(button);
+  expect(await screen.findByLabelText("Job log content")).toHaveTextContent("AssertionError");
+  expect(button).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("region", { name: "Job logs" })).toHaveFocus();
+  expect(get.mock.calls.some(([path]) => path === "/api/v1/github/repositories/octocat/secure-demo/actions/jobs/801/logs?installation_id=10")).toBe(true);
+});
+it("shows log loading until the backend responds", async () => {
+  let resolve!: (value: unknown) => void;
+  get.mockImplementation(() => new Promise(done => { resolve = done; }));
+  mount(<LogViewer path="/fixture/logs" />);
+  expect(screen.getByRole("status")).toHaveTextContent("Loading job logs");
+  resolve(fixture("/logs"));
+  expect(await screen.findByLabelText("Job log content")).toBeVisible();
+});
+it.each([
+  [404, "GITHUB_LOGS_UNAVAILABLE", "Job logs are unavailable, expired or deleted."],
+  [502, "GITHUB_UNAVAILABLE", "GitHub is temporarily unavailable."],
+] as const)("shows a safe %s log error and retries successfully", async (status, code, message) => {
+  get.mockRejectedValueOnce(new ApiError(message, status, "http", code)).mockResolvedValue(fixture("/logs"));
+  mount(<LogViewer path="/fixture/logs" />);
+  expect(await screen.findByRole("alert")).toHaveTextContent(message);
+  await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByLabelText("Job log content")).toHaveTextContent("AssertionError");
+  expect(get).toHaveBeenCalledTimes(2);
+});
+it("explains empty logs and offers retry", async () => {
+  get.mockResolvedValueOnce({ ...(fixture("/logs") as object), content: "" }).mockResolvedValue(fixture("/logs"));
+  mount(<LogViewer path="/fixture/logs" />);
+  expect(await screen.findByText(/No log text is available yet/)).toBeVisible();
+  expect(screen.queryByLabelText("Job log content")).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(await screen.findByLabelText("Job log content")).toBeVisible();
+});

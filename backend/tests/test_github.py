@@ -537,3 +537,35 @@ def test_github_configuration_rejects_unsafe_destinations_and_keys(github, field
     values[field] = value
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **values)
+
+
+@pytest.mark.parametrize("conclusion", ["success", "failure"])
+def test_completed_job_logs_without_log_url(connected, conclusion):
+    from github_mock import JOB
+
+    client, mock, _ = connected
+    metadata = {**JOB, "conclusion": conclusion}
+    assert "logs_url" not in metadata
+    mock.overrides["/repos/octocat/secure-demo/actions/jobs/801"] = (200, metadata, {})
+    response = client.get(REPO + "/actions/jobs/801/logs?installation_id=10")
+    assert response.status_code == 200
+    assert response.json()["job_id"] == 801
+    assert "AssertionError" in response.json()["content"]
+    request = next(r for r in mock.calls if r.url.path.endswith("/jobs/801/logs"))
+    assert request.url.host == "api.github.com"
+    assert request.headers["authorization"] == "Bearer " + ACCESS
+    assert "authorization" not in mock.calls[-1].headers
+
+
+@pytest.mark.parametrize("status", [404, 410])
+def test_unavailable_job_logs_can_be_retried(connected, status):
+    client, mock, _ = connected
+    path = "/repos/octocat/secure-demo/actions/jobs/801/logs"
+    mock.overrides[path] = (status, {"message": "private " + ACCESS}, {})
+    response = client.get(REPO + "/actions/jobs/801/logs?installation_id=10")
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "GITHUB_LOGS_UNAVAILABLE"
+    assert ACCESS not in response.text
+    assert not any(r.url.host != "api.github.com" for r in mock.calls if r.method == "GET")
+    del mock.overrides[path]
+    assert client.get(REPO + "/actions/jobs/801/logs?installation_id=10").status_code == 200

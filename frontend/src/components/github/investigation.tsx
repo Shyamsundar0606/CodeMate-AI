@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
   useGitHub,
@@ -25,6 +25,10 @@ export function LogViewer({ path }: { path: string }) {
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
   const logs = useGitHub(path, logSchema);
+  const viewer = useRef<HTMLElement>(null);
+  useEffect(() => {
+    viewer.current?.focus();
+  }, [path]);
   const lines = (logs.data?.content || "")
     .split("\n")
     .map((text, index) => ({ text, number: index + 1 }))
@@ -51,12 +55,33 @@ export function LogViewer({ path }: { path: string }) {
     }
   }
   return (
-    <section className="card github-log">
+    <section
+      id="selected-job-logs"
+      ref={viewer}
+      tabIndex={-1}
+      aria-label="Job logs"
+      className="card github-log"
+    >
       <h3>Available job logs</h3>
       {logs.isPending ? (
-        <Loading />
+        <p role="status" aria-live="polite">
+          Loading job logs...
+        </p>
       ) : logs.isError ? (
-        <ErrorState error={logs.error} />
+        <ErrorState error={logs.error} retry={() => void logs.refetch()} />
+      ) : !logs.data?.content.trim() ? (
+        <div role="status">
+          <p>
+            No log text is available yet. Logs may still be processing or may have expired.
+          </p>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => void logs.refetch()}
+          >
+            Try again
+          </button>
+        </div>
       ) : (
         <>
           <p>{logs.data?.warning}</p>
@@ -192,6 +217,9 @@ function Investigation({
                       <div className="github-toolbar">
                         <button
                           className="button secondary"
+                          type="button"
+                          aria-controls="selected-job-logs"
+                          aria-expanded={job === j.id}
                           onClick={() => setJob(j.id)}
                         >
                           View logs for {j.name}

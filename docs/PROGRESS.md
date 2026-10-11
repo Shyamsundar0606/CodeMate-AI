@@ -550,3 +550,52 @@ after E2E, with generated types restored to `.next`. `npm install` was up to dat
 final production audit remains zero and full audit remains five high findings
 (exit 1, intentionally unresolved). Test-only API8001 and Next3000 children and
 disposable browser accounts were cleaned up by the guarded runner.
+
+
+### Milestone 4 follow-up: job log viewer (2026-10-11)
+
+Inspected the committed CI/CD investigation button, frontend/backend Job schemas,
+repository authorization service and bounded GitHub log client. In this checkout,
+the View logs button already has no disabled condition; neither Job schema contains
+or requires logs_url. The reported disabled state was not reproduced, so no claim
+is made that its cause was identified. A stale running frontend is a possibility,
+not an established diagnosis; restart/rebuild and reload the investigation page
+if its rendered button differs from this source.
+
+The scoped viewer improvement makes View logs an explicit non-submit button with
+expanded/control accessibility state and focuses the selected viewer, so the click
+is apparent even when logs render below the job list. Added explicit log loading,
+empty/unavailable text, and manual retry after an error or empty response. Existing
+rate-limit retry restrictions remain in effect. Successful and failed jobs remain
+clickable without inspecting a log URL or guessing upstream availability.
+
+No backend production code, authorization, App permissions or schemas changed.
+The backend verifies installation/repository membership and job metadata, then
+requests GET /repos/{owner}/{repo}/actions/jobs/{job_id}/logs with the user's App
+credential. It validates the signed redirect and downloads without credentials.
+The existing HTTPS host allowlist, one-hop redirect handling, timeouts, 256 KiB /
+4,000-line limits, redaction, no-store responses and user isolation remain intact.
+API reference: https://docs.github.com/en/rest/actions/workflow-jobs#download-job-logs-for-a-workflow-run
+
+Actual verification results:
+- Backend: 139 passed in 47.90s with python -m pytest -W error; no skips/failures.
+  Ruff lint and formatting checks passed (58 files formatted).
+- Frontend: 79 passed in 5.36s. ESLint with --max-warnings=0, TypeScript and the
+  Next.js 16.4.0 production build passed.
+- Added four backend cases covering completed success/failure without logs_url,
+  unavailable HTTP 404/410 responses and successful retry. Added six frontend cases
+  covering button enablement, request-on-click, viewer focus, loading, safe 404/502
+  errors with retry, and empty-log recovery. Existing redirect/redaction/limits and
+  frontend HTML-escaping tests remain enabled and pass.
+- Live App-authorized service verification used the existing stored connection:
+  Shyamsundar0606/CodeMate-AI run 38149017752 was completed/success; job 114498333499
+  returned 63,039 characters of redacted log text, not truncated. Only counts/status
+  were printed; no tokens, secrets, signed URLs or log content were output or saved.
+  This verifies the actual backend service path, not a new browser OAuth flow or a
+  reproduction of the reported live disabled button. Browser E2E was not rerun.
+- Existing five high development-tool dependency findings were not changed or
+  re-audited in this scoped fix. No dependency upgrades, commits or pushes performed.
+
+Changed files: frontend/src/components/github/investigation.tsx,
+frontend/src/tests/github.test.tsx, backend/tests/test_github.py, docs/PROGRESS.md.
+Milestone 5 has not started.
