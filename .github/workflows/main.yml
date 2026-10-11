@@ -1,0 +1,119 @@
+﻿name: CodeMate CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: test
+      COOKIE_SECURE: 'false'
+      CORS_ORIGINS: '["http://localhost:3000"]'
+      # Public, disposable CI credentials; never used outside this job's service.
+      DATABASE_URL: postgresql+psycopg://codemate_test_user:ci-test-only@127.0.0.1:5433/codemate_test_db
+      TEST_DATABASE_URL: postgresql+psycopg://codemate_test_user:ci-test-only@127.0.0.1:5433/codemate_test_db
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-admin-only
+          POSTGRES_DB: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Python 3.12
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.lock.txt
+      - name: Install locked backend dependencies
+        run: |
+          python -m pip install -r requirements-dev.lock.txt
+          python -m pip check
+      - name: Initialize isolated test database and signing key
+        run: |
+          python - <<'PY'
+          import os
+          import secrets
+          import psycopg
+
+          with psycopg.connect(
+              "postgresql://postgres:ci-admin-only@127.0.0.1:5433/postgres",
+              autocommit=True,
+          ) as connection:
+              connection.execute(
+                  "CREATE ROLE codemate_test_user LOGIN PASSWORD 'ci-test-only' "
+                  "NOSUPERUSER NOCREATEDB NOCREATEROLE"
+              )
+              connection.execute("CREATE DATABASE codemate_test_db OWNER codemate_test_user")
+              connection.execute("REVOKE ALL ON DATABASE codemate_test_db FROM PUBLIC")
+              # An empty sentinel database verifies the test role's isolation.
+              connection.execute("CREATE DATABASE codemate_db")
+              connection.execute("REVOKE ALL ON DATABASE codemate_db FROM PUBLIC")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write("JWT_SECRET_KEY=" + secrets.token_urlsafe(48) + "\n")
+          PY
+      - name: Check Ruff lint
+        run: python -m ruff check .
+      - name: Check Ruff formatting
+        run: python -m ruff format --check .
+      - name: Apply and verify Alembic migrations
+        run: |
+          python -m alembic upgrade head
+          python -m alembic check
+      - name: Run backend integration tests with warnings as errors
+        run: python -m pytest -W error
+
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Set up Node.js 24
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked frontend dependencies
+        run: npm ci
+      - name: Run frontend unit tests
+        run: npm test
+      - name: Check ESLint
+        run: npm run lint -- --max-warnings=0
+      - name: Check TypeScript
+        run: npm run typecheck
+      - name: Build Next.js for production
+        run: npm run build
