@@ -1,0 +1,5 @@
+import { Fingerprint, KeyRound, ShieldCheck } from "lucide-react";
+import { Brand } from "@/components/ui/brand";
+export function AuthFrame({ children }: { children: React.ReactNode }) {
+  return <main className="auth-page"><section className="auth-story"><Brand /><div className="auth-story-copy"><span className="eyebrow">YOUR DEVELOPER WORKSPACE</span><h1>Less friction.<br /><span>More focus.</span></h1><p>A clear view of your development workflow, built on a secure, local-first foundation.</p><div className="auth-feature"><ShieldCheck /><div><strong>Secure by design</strong><span>Argon2id passwords and verified sessions.</span></div></div><div className="auth-feature"><KeyRound /><div><strong>Your session, protected</strong><span>HttpOnly cookies. Tokens kept in memory.</span></div></div><div className="auth-feature"><Fingerprint /><div><strong>Built for engineers</strong><span>Repository and AI tools arrive in later milestones.</span></div></div></div><p className="auth-footnote">CodeMate AI · Developer & DevOps workspace</p></section><section className="auth-form-panel">{children}</section></main>;
+}

@@ -1,0 +1,23 @@
+.env
+.env.*
+!.env.example
+!.env.test.example
+node_modules/
+.next/
+out/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage/
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Isolated frontend browser verification
+.next-e2e/
+.e2e-lock/
+test-results/
+playwright-report/

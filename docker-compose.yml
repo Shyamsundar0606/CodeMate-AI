@@ -1,0 +1,26 @@
+name: codemate-ai
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: codemate-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: codemate_db
+      POSTGRES_USER: codemate_owner
+      POSTGRES_PASSWORD: ${CODEMATE_OWNER_PASSWORD:?Run backend/scripts/setup_local.py first}
+      CODEMATE_DB_PASSWORD: ${CODEMATE_DB_PASSWORD:?Run backend/scripts/setup_local.py first}
+      CODEMATE_TEST_PASSWORD: ${CODEMATE_TEST_PASSWORD:?Run backend/scripts/setup_local.py first}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - codemate_postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init.sh:/docker-entrypoint-initdb.d/10-codemate.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=$$CODEMATE_DB_PASSWORD psql -h 127.0.0.1 -U codemate_user -d codemate_db -tAc 'SELECT 1' >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+volumes:
+  codemate_postgres_data:
+    name: codemate-ai-postgres-data
