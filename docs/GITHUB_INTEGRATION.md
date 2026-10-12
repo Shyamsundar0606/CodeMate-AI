@@ -347,3 +347,16 @@ no Ollama integration, AI analysis, voice input/output or autonomous changes.
 The repository was already entirely untracked at the baseline; no commit or remote
 PR was created, and no diff against a committed application baseline is claimed.
 Ignored configuration, database volumes and existing user data were preserved.
+
+
+## Milestone 5 consumption of read-only evidence
+
+The local diagnostic worker reuses these exact authorized repository/run/job/log
+services. No App permission, callback, encryption key or OAuth configuration change
+is required. The AI cannot choose endpoints or request GitHub writes. Stored report
+ownership is tied to the original CodeMate user and GitHub connection; access is
+revalidated on creation, retry and execution. Disconnect deletes associated saved
+investigations through a foreign-key cascade. Completed successful runs receive a
+metadata summary and are never presented as CI failures.
+See [AI_DIAGNOSTICS.md](AI_DIAGNOSTICS.md) and PROGRESS.md for separately labeled
+live local fixture inference and live GitHub-backed failure-diagnosis status.

@@ -11,3 +11,6 @@ email-validator>=2.2,<3.0
 # Runtime GitHub HTTP requests and authenticated token encryption.
 httpx>=0.28,<1.0
 cryptography>=46,<50
+
+# Bounded local diagnostic graph; no hosted provider.
+langgraph==1.2.14

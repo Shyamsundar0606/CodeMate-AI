@@ -78,11 +78,16 @@ elif mode != "serve":
 engine.dispose()
 if mode == "serve":
     import uvicorn
-    from cryptography.fernet import Fernet
     from app.core.config import Settings
     from app.main import create_app
+    from cryptography.fernet import Fernet
 
     sys.path.insert(0, str(BACKEND / "tests"))
+    from contextlib import asynccontextmanager
+    from threading import Event, Thread
+
+    from ai_mock import MockOllama
+    from app.ai.worker import InvestigationWorker
     from github_mock import MockGitHub
 
     # Explicit test-only credentials and transport; never read a live App configuration.
@@ -93,7 +98,43 @@ if mode == "serve":
         github_token_encryption_key=Fernet.generate_key().decode(),
         github_redirect_uri="http://localhost:8001/api/v1/github/callback",
     )
-    application = create_app(config, github_transport=MockGitHub().transport)
+    ollama_mock = MockOllama()
+    ollama_mock.delay = 1
+    application = create_app(
+        config,
+        github_transport=MockGitHub().transport,
+        ollama_transport=ollama_mock.transport,
+    )
+    worker = InvestigationWorker(
+        config,
+        application.state.session_factory,
+        application.state.engine,
+        application.state.github_client,
+        application.state.ollama_client,
+    )
+    original_lifespan = application.router.lifespan_context
+
+    @asynccontextmanager
+    async def test_lifespan(app):
+        async with original_lifespan(app):
+            stop = Event()
+
+            def work():
+                while not stop.is_set():
+                    worker.tick()
+                    stop.wait(0.2)
+
+            thread = Thread(target=work, daemon=False)
+            thread.start()
+            try:
+                yield
+            finally:
+                stop.set()
+                thread.join(timeout=10)
+                if thread.is_alive():
+                    raise RuntimeError("Test-only AI worker did not stop")
+
+    application.router.lifespan_context = test_lifespan
     uvicorn.run(
         application,
         host="127.0.0.1",

@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { AnalyzeRun } from "@/components/ai/diagnostics";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
@@ -183,6 +184,7 @@ function Investigation({
               </p>
               <External url={run.data.html_url}>Open run on GitHub</External>
             </section>
+            <AnalyzeRun context={{ installation_id: Number(installation), owner, repo, workflow_run_id: Number(runId) }} status={run.data.status} conclusion={run.data.conclusion} />
             <h2>Jobs and steps</h2>
             {jobs.isPending ? (
               <Loading />
@@ -255,7 +257,7 @@ function Investigation({
         )
       )}
       <p className="github-notice">
-        AI-assisted diagnosis is coming in Milestone 5.
+        Local AI suggestions are read-only; review evidence before changing code.
       </p>
     </>
   );

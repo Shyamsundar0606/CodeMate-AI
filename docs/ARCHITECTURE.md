@@ -1,4 +1,4 @@
-# CodeMate architecture - Milestones 1-4
+# CodeMate architecture - Milestones 1-5
 
 ```mermaid
 flowchart LR
@@ -19,7 +19,7 @@ flowchart LR
 
 The monolith uses Python 3.12, FastAPI, Pydantic 2, synchronous SQLAlchemy 2 typed
 models, psycopg 3, and PostgreSQL 16. Synchronous endpoints/dependencies run in
-FastAPI's worker thread pool. The GitHub module described below extends the same monolith. No Redis, Celery, AI
+FastAPI's worker thread pool. The GitHub module described below extends the same monolith. Milestone 5 adds the bounded local AI module described below; no Redis, Celery
 or voice modules are added.
 
 ## Composition and persistence
@@ -276,3 +276,29 @@ are added. Production transport always uses approved GitHub endpoints; a control
 MockTransport injection is permitted only in test environment. E2E keeps its existing
 separate database/process guards. See GITHUB_INTEGRATION.md for the API reference,
 permission sources, state machine, data retention, deadlines and known limitations.
+
+
+## Milestone 5: local diagnostic graph and durable worker
+
+`app/ai` defines strict reports, deterministic evidence extraction, eight finite
+LangGraph nodes and a PostgreSQL-backed investigation worker. `integrations/ollama`
+uses native JSON-schema HTTPX inference at the exact loopback endpoint, with no
+cloud model fallback or model tools. `services/ai_investigation_service.py` owns
+idempotent admission/history/retry/cancel/delete transactions. `api/routes/ai.py`
+reuses bearer authentication and matching active cookie-session CSRF checks.
+Browser POST aliases under `/api/v1/auth/ai` preserve the original cookie scope.
+
+New additive revision 0003 creates the owner/connection-scoped investigation table,
+indexes, foreign keys, state/attempt constraints and 128 KiB report bound. Findings
+and redacted evidence live in a validated JSONB report. API startup never migrates
+or requires Ollama. Job/account/global session advisory locks prevent concurrent
+execution; process loss releases locks so another worker can restart the finite
+graph within the same attempt budget. Reports, stages and failures are durable;
+individual graph-node checkpoints are not persisted. Retention is worker-driven.
+
+The protected AI overview/report pages reuse the session manager, Zod and query
+cache, with abortable reads, bounded polling, explicit errors/retries, inert
+collapsible evidence and qualitative confidence. Model output never executes.
+Success metadata bypasses inference. No repository/source/workflow writes were
+added. See [AI_DIAGNOSTICS.md](AI_DIAGNOSTICS.md) for the graph, exact limits,
+threat model, Windows commands and remaining operational limits.

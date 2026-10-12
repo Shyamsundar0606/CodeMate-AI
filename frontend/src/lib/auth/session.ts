@@ -103,7 +103,7 @@ export class SessionManager {
       return false;
     }
   }
-  async post<T>(path: "/api/v1/auth/github/connect" | "/api/v1/auth/github/disconnect", schema: z.ZodType<T>): Promise<T> {
+  async post<T>(path: "/api/v1/auth/github/connect" | "/api/v1/auth/github/disconnect" | `/api/v1/auth/ai/${string}`, schema: z.ZodType<T> | undefined, body?: unknown): Promise<T> {
     const generation = this.generation;
     const current = () => {
       if (generation !== this.generation || !this.access) throw new ApiError("The session changed. Please sign in again.", 401);
@@ -115,7 +115,7 @@ export class SessionManager {
         current();
         const { csrf_token } = await bootstrapCsrf(this.api);
         current();
-        const value = await this.api.request(path, { method: "POST", headers: { Authorization: `Bearer ${this.access}`, "X-CodeMate-Request": "1", "X-CSRF-Token": csrf_token } }, schema);
+        const value = await this.api.request(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body), headers: { Authorization: `Bearer ${this.access}`, "X-CodeMate-Request": "1", "X-CSRF-Token": csrf_token } }, schema);
         current();
         return value;
       });
@@ -127,14 +127,14 @@ export class SessionManager {
     }
   }
   // Only idempotent authenticated GETs get one refresh and one retry.
-  async get<T>(path: string, schema: z.ZodType<T>): Promise<T> {
+  async get<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T> {
     const generation = this.generation;
     const assertCurrent = () => {
       if (generation !== this.generation || !this.access) throw new ApiError("The session changed. Please sign in again.", 401);
     };
     const request = async () => {
       assertCurrent();
-      const result = await this.api.request(path, { headers: { Authorization: `Bearer ${this.access}` } }, schema);
+      const result = await this.api.request(path, { signal, headers: { Authorization: `Bearer ${this.access}` } }, schema);
       assertCurrent();
       return result;
     };

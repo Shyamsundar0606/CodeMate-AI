@@ -54,7 +54,7 @@ test("network outages hide protected content and local signout reports unconfirm
 
 
 test("GitHub pages require a CodeMate session", async ({page}) => {
- for (const path of ["/dashboard/github","/dashboard/repositories","/dashboard/cicd","/dashboard/cicd/runs/701?owner=octocat&repo=secure-demo&installation=10"]) {
+ for (const path of ["/dashboard/ai","/dashboard/ai/investigations/3c337168-8a43-4f3e-bbaf-cf055ec41101","/dashboard/github","/dashboard/repositories","/dashboard/cicd","/dashboard/cicd/runs/701?owner=octocat&repo=secure-demo&installation=10"]) {
   await page.goto(path);await expect(page).toHaveURL(/\/login$/);
  }
 });
@@ -81,6 +81,27 @@ test("controlled GitHub authorization, repository activity, failed jobs, logs an
  await expect(page.getByText("Run API integration tests",{exact:true})).toBeVisible();await expect(page.locator(".failed-job")).toHaveCount(1);
  await page.getByRole("button",{name:"View logs for pytest"}).click();await expect(page.getByLabel("Job log content")).toContainText("AssertionError: expected 200, received 401");await expect(page.getByLabel("Job log content")).toContainText("<script>");expect(await page.locator("main script").count()).toBe(0);await expect(page.getByLabel("Job log content")).not.toContainText("ghu_");
  await page.getByLabel("Search log").fill("AssertionError");await expect(page.getByLabel("Job log content")).not.toContainText("<script>");await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:"test-results/github-investigation-desktop.png",fullPage:true});
+
+ await page.getByRole("button",{name:"Analyze with AI",exact:true}).click();
+ await expect(page).toHaveURL(/\/dashboard\/ai\/investigations\/[0-9a-f-]+$/);
+ await expect(page.getByText(/Analysis: (queued|running)/)).toBeVisible();
+ await expect(page.getByText(/Analysis: completed/)).toBeVisible({timeout:20000});
+ await expect(page.getByRole("heading",{name:"Recorded job failure"})).toBeVisible();
+ await page.getByRole("link",{name:/Open evidence E-/}).click();
+ const evidence = page.locator("details.ai-evidence").filter({has:page.locator("summary",{hasText:"job_log"})}).first();
+ await evidence.locator("summary").focus();await page.keyboard.press("Enter");await expect(evidence).toHaveAttribute("open","");
+ await expect(evidence.locator("pre")).toContainText("AssertionError");
+ await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:"test-results/ai-report-desktop.png",fullPage:true});
+ await page.reload();await expect(page.getByRole("heading",{name:"Recorded job failure"})).toBeVisible();
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/ai-report-mobile.png",fullPage:true});await page.setViewportSize({width:1440,height:900});
+ await page.getByRole("link",{name:"Investigation history",exact:true}).click();
+ await expect(page.getByText(/Completed: 1/)).toBeVisible();
+ await page.route("http://localhost:8001/api/v1/ai/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({available:false,model_available:false,selected_model:"qwen2.5-coder:3b",message:"Ollama is unavailable; other features remain available."})}));
+ await page.getByRole("button",{name:"Check local model"}).click();await expect(page.getByText(/Ollama is unavailable/)).toBeVisible();
+ await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
+ await page.screenshot({path:"test-results/ai-history-mobile.png",fullPage:true});
+ await page.setViewportSize({width:1440,height:900});await page.unroute("http://localhost:8001/api/v1/ai/status");
  await page.goto("/dashboard/cicd?installation=10&owner=octocat&repo=secure-demo");await expect(page.getByRole("link",{name:"Backend Tests #128"})).toBeVisible();await page.getByLabel("Run status").selectOption("success");await expect(page.getByRole("link",{name:"Backend Tests #127"})).toBeVisible();await expect(page.getByRole("link",{name:"Backend Tests #128"})).toHaveCount(0);
  await page.route("http://localhost:8001/api/v1/github/repositories?**",route=>route.fulfill({status:429,contentType:"application/json",body:JSON.stringify({detail:{code:"GITHUB_RATE_LIMITED",message:"GitHub rate limit reached. Wait before refreshing.",retry_after:30}})}));await page.goto("/dashboard/repositories?installation=10");await expect(page.locator("main").getByRole("alert")).toContainText("rate limit");await page.unroute("http://localhost:8001/api/v1/github/repositories?**");
  await page.setViewportSize({width:390,height:844});await page.getByRole("button",{name:"Open navigation"}).click();await navigate(page,"GitHub");await expect(page.getByRole("heading",{name:"Connected as octocat"})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:"test-results/github-connection-mobile.png",fullPage:true});

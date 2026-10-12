@@ -146,3 +146,19 @@ it("GitHub revoked authorization does not revoke the CodeMate session",async()=>
 it("GitHub mutations do not retry a failed state-changing request",async()=>{
  const session=create();await session.login(credentials);fetchMock.mockImplementation(url=>String(url).includes("/github/")?Promise.resolve(response({},503)):standard(url));await expect(session.post("/api/v1/auth/github/connect",z.object({value:z.string()}))).rejects.toMatchObject({status:503});expect(calls("/github/connect")).toHaveLength(1);expect(session.getSnapshot().status).toBe("authenticated");
 });
+
+it("sends AI input with bearer, custom header, cookie CSRF and no automatic mutation retry", async () => {
+ const session = create(); await session.login(credentials);
+ const body = { owner: "octocat", repo: "demo", installation_id: 10, workflow_run_id: 701 };
+ await session.post("/api/v1/auth/ai/investigations", z.object({ value: z.string() }), body);
+ const options = calls("/ai/investigations")[0][1]!;
+ const headers = new Headers(options.headers);
+ expect(headers.get("Authorization")).toBe(`Bearer ${tokens.access_token}`);
+ expect(headers.get("X-CSRF-Token")).toBe(csrf);
+ expect(headers.get("X-CodeMate-Request")).toBe("1");
+ expect(JSON.parse(options.body as string)).toEqual(body);
+ expect(options.credentials).toBe("include");
+ fetchMock.mockImplementation(url => String(url).endsWith("/ai/investigations") ? Promise.resolve(response({ detail: { code: "AI_USER_BUSY", message: "Already running." } }, 409)) : standard(url));
+ await expect(session.post("/api/v1/auth/ai/investigations", undefined, body)).rejects.toMatchObject({ code: "AI_USER_BUSY" });
+ expect(calls("/ai/investigations")).toHaveLength(2);
+});

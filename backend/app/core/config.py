@@ -33,6 +33,46 @@ class Settings(BaseSettings):
     github_app_slug: str = ""
     github_api_base_url: Literal["https://api.github.com"] = "https://api.github.com"
 
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = Field(default="qwen2.5-coder:3b", pattern=r"^[A-Za-z0-9_.:/-]{1,100}$")
+    ollama_timeout_seconds: int = Field(default=120, ge=5, le=180)
+    ai_max_log_chars: int = Field(default=64000, ge=1000, le=262144)
+    ai_max_context_chars: int = Field(default=24000, ge=4000, le=32000)
+    ai_max_evidence_chars: int = Field(default=12000, ge=1000, le=16000)
+    ai_per_job_chars: int = Field(default=3000, ge=500, le=4000)
+    ai_max_jobs: int = Field(default=4, ge=1, le=4)
+    ai_max_concurrent_investigations: int = Field(default=1, ge=1, le=4)
+    ai_max_retries: int = Field(default=2, ge=0, le=2)
+    ai_investigation_timeout_seconds: int = Field(default=240, ge=30, le=360)
+    ai_investigation_retention_days: int = Field(default=30, ge=1, le=90)
+
+    @field_validator("ollama_base_url")
+    @classmethod
+    def local_inference_only(cls, value: str) -> str:
+        from urllib.parse import urlsplit
+
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "http"
+            or parsed.hostname != "127.0.0.1"
+            or parsed.port != 11434
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+            or parsed.username
+            or parsed.password
+        ):
+            raise ValueError("Ollama must use http://127.0.0.1:11434")
+        return value.rstrip("/")
+
+    @model_validator(mode="after")
+    def ai_budgets(self) -> "Settings":
+        if "cloud" in self.ollama_model.lower():
+            raise ValueError("Cloud-hosted Ollama models are prohibited")
+        if self.ai_max_context_chars < self.ai_max_evidence_chars + 3000:
+            raise ValueError("AI context must leave room for evidence metadata")
+        return self
+
     @property
     def github_configured(self) -> bool:
         return bool(

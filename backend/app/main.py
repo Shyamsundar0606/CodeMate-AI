@@ -13,6 +13,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 
 from app.api.health import router as health_router
+from app.api.routes.ai import mutations as ai_mutations
+from app.api.routes.ai import router as ai_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.github import mutations as github_mutations
 from app.api.routes.github import router as github_router
@@ -22,18 +24,23 @@ from app.core.logging import RequestLogMiddleware, protect_external_access_logs
 from app.db.session import build_engine, build_session_factory
 from app.integrations.github.authorization_cache import AuthorizationCache
 from app.integrations.github.client import GitHubClient
+from app.integrations.ollama.client import OllamaClient
 
 logger = logging.getLogger("codemate.errors")
 
 
 def create_app(
-    settings: Settings | None = None, *, github_transport: httpx.BaseTransport | None = None
+    settings: Settings | None = None,
+    *,
+    github_transport: httpx.BaseTransport | None = None,
+    ollama_transport: httpx.BaseTransport | None = None,
 ) -> FastAPI:
     protect_external_access_logs()
     config = settings or Settings()
-    if github_transport is not None and config.app_env != "test":
+    if (github_transport is not None or ollama_transport is not None) and config.app_env != "test":
         raise ValueError("Mock GitHub transport is permitted only in the isolated test environment")
     github_client = GitHubClient(config, github_transport)
+    ollama_client = OllamaClient(config, ollama_transport)
     engine = build_engine(config)
 
     @asynccontextmanager
@@ -42,10 +49,12 @@ def create_app(
             yield
         finally:
             github_client.close()
+            ollama_client.close()
             engine.dispose()
 
     application = FastAPI(title=config.app_name, version="0.1.0", lifespan=lifespan)
     application.state.github_client = github_client
+    application.state.ollama_client = ollama_client
     application.state.github_authorization_cache = AuthorizationCache()
     application.state.settings = config
     application.state.engine = engine
@@ -106,7 +115,7 @@ def create_app(
                 revision = connection.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar()
-            if revision != "0002_github_integration":
+            if revision != "0003_ai_investigations":
                 return JSONResponse(status_code=503, content={"status": "unavailable"})
         except SQLAlchemyError:
             return JSONResponse(status_code=503, content={"status": "unavailable"})
@@ -117,6 +126,8 @@ def create_app(
     application.include_router(users_router)
     application.include_router(github_router)
     application.include_router(github_mutations)
+    application.include_router(ai_router)
+    application.include_router(ai_mutations)
     return application
 
 

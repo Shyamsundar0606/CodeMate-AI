@@ -22,7 +22,10 @@ export class ApiClient {
 
   async request<T>(path: string, options: RequestInit = {}, schema?: z.ZodType<T>): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), path.includes("/github/") ? 30000 : this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), (path.includes("/github/") || path.includes("/ai/")) ? 30000 : this.timeoutMs);
+    const abort = () => controller.abort();
+    if (options.signal?.aborted) controller.abort();
+    options.signal?.addEventListener("abort", abort, { once: true });
     const headers = new Headers(options.headers);
     headers.set("Accept", "application/json");
     if (options.body) headers.set("Content-Type", "application/json");
@@ -31,10 +34,10 @@ export class ApiClient {
         ...options, headers, credentials: "include", cache: "no-store", signal: controller.signal,
       });
       if (!response.ok) {
-        if (path.includes("/github/")) {
+        if (path.includes("/github/") || path.includes("/ai/")) {
           const body = await response.json().catch(() => null);
           const detail = body?.detail;
-          if (typeof detail?.code === "string" && /^GITHUB_[A-Z_]+$/.test(detail.code) && typeof detail.message === "string") {
+          if (typeof detail?.code === "string" && /^(?:GITHUB|AI)_[A-Z_]+$/.test(detail.code) && typeof detail.message === "string") {
             throw new ApiError(detail.message.slice(0, 500), response.status, "http", detail.code, typeof detail.retry_after === "number" ? detail.retry_after : undefined);
           }
         }
@@ -58,7 +61,7 @@ export class ApiClient {
       if (error instanceof ApiError) throw error;
       if (controller.signal.aborted) throw new ApiError("The request timed out. Please try again.", undefined, "timeout");
       throw new ApiError("Cannot reach the API. Check your connection and try again.", undefined, "network");
-    } finally { clearTimeout(timer); }
+    } finally { clearTimeout(timer); options.signal?.removeEventListener("abort", abort); }
   }
 }
 export const apiClient = new ApiClient();

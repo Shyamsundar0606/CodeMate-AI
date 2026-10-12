@@ -599,3 +599,202 @@ Actual verification results:
 Changed files: frontend/src/components/github/investigation.tsx,
 frontend/src/tests/github.test.tsx, backend/tests/test_github.py, docs/PROGRESS.md.
 Milestone 5 has not started.
+
+
+## Milestone 5 - Local AI-powered CI failure diagnosis (2026-10-12)
+
+**IMPLEMENTED, LIVE VERIFICATION PENDING.** All implemented automated and local
+fixture checks pass. **LIVE OLLAMA FIXTURE DIAGNOSIS VERIFIED.**
+**LIVE GITHUB FAILURE DIAGNOSIS NOT YET VERIFIED:** the existing App-authorized
+repository returned zero failed workflow runs and no additional failure page.
+No deliberately failing workflow, disposable branch or GitHub write was created.
+Historical CodeMate run 38149017752 still reports completed/success.
+
+### Implemented scope
+
+- Native local Ollama JSON-schema client, installed-model discovery/status,
+  exact loopback-only endpoint, remote/cloud-model rejection, response/context/
+  output/time limits and independent Pydantic validation. Optional for API startup.
+- Eight finite LangGraph nodes: authorize, fetch_run, fetch_jobs, collect_evidence,
+  extract_signals, local_diagnosis, ground_findings, build_report. Worker commits
+  the typed report atomically. No cycles, model-selected tools, shell execution,
+  code application, workflow changes, paid inference or external model fallback.
+- Deterministic failure extraction with context, deduplication, stable IDs,
+  redaction, per-job/total budgets and honest partial/missing evidence. Findings
+  require existing evidence IDs and exact quotes. Unsupported recognizable details
+  are flagged LOW; suspicious credential-disclosure output is rejected.
+- Durable owner-scoped PostgreSQL queue/history with UUIDs, UTC timestamps,
+  constraints, indexes and bounded JSONB reports. User/connection deletion cascades.
+  Default 30-day terminal-report retention while the worker runs; explicit delete.
+- Per-user admission row locking; account/job/global worker advisory locks;
+  interrupted job-level recovery; at most three execution attempts; manual retry,
+  cooperative cancellation and fresh row-lock checks before report completion.
+- Authenticated AI status/models/history/report and create/retry/cancel/delete.
+  Mutations preserve matching cookie session, CSRF, Origin and custom-header checks.
+  Browser auth-path aliases preserve the original HttpOnly cookie path.
+- `/dashboard/ai` overview/history and `/dashboard/ai/investigations/[id]` report;
+  CI/CD Analyze with AI action, successful-run No failure detected behavior,
+  durable bounded polling, keyboard evidence panels, retry/cancel/delete and copy
+  warning. No frontend-to-Ollama requests or fabricated dashboard counts.
+
+### Actual verification
+
+| Check | Result |
+| --- | --- |
+| Windows Python 3.12, full Pytest -W error | **191 passed**, 0 failed/skipped; 123.30s |
+| Clean Linux Python 3.12, actual backend CI commands | **191 passed**, 0 failed/skipped; 63.29s |
+| Frontend unit tests | **98 passed**, 0 failed/skipped; final 7.32s |
+| Real Edge E2E, all seven existing flows extended | **7 passed**, 0 failed/skipped; final 19.0s |
+| Ruff lint / formatting | Pass; backend 74 files, helper included 75 |
+| ESLint --max-warnings=0 | Pass |
+| Strict TypeScript | Pass, including after normal build following E2E |
+| Next.js 16.4.0 production build | Pass; new AI routes present |
+| Python pip check | No broken requirements |
+| Alembic development upgrade/check | Head 0003_ai_investigations; no schema drift |
+| Existing development users/sessions/GitHub connections | Counts preserved by additive upgrade |
+| Test migration/schema checks | Fresh/base-head roundtrip, 0003-0002-head preservation and constraints pass |
+| Local-secret scan of changed/new files | No exact local credential matches; values never printed |
+| npm audit --omit=dev | 0 findings, exit 0 |
+| Full npm audit | Existing 5 high dev-tooling findings, exit 1 |
+
+The original 139 backend and 79 frontend tests remain enabled; 52 backend and
+19 frontend cases were added. Fixtures cover Pytest assertions, missing dependency,
+TypeScript compilation, npm dependency install, PostgreSQL connection, migration,
+permissions, timeout, resource exhaustion, prompt injection and successful runs.
+Coverage includes provider offline/missing/timeout/malformed/truncated/oversized
+output, graph transitions, partial/missing/multiple-job evidence, valid/invalid
+references, persisted errors, idempotency/concurrent creation, owner/CSRF boundaries,
+worker locks, interruption, finite retry, in-flight cancellation/deletion, retention
+and additive migration preservation. Existing auth/session/GitHub security tests pass.
+
+Edge additionally verifies AI progress/completion, evidence Enter-key expansion,
+history/reload, protected AI routes, unavailable model messaging, and desktop/mobile
+report/history layout with no horizontal overflow. Screenshots were visually
+reviewed. Browser requests use controlled GitHub/Ollama responses through the real
+FastAPI services and isolated PostgreSQL. This is not live inference evidence.
+
+### Real local inference
+
+Ollama was already installed/reachable at 127.0.0.1:11434, reporting version 0.40.3.
+Installed `qwen2.5-coder:3b` was selected: 3.1B/Q4_K_M, 1,929,912,626 disk bytes.
+Machine: approximately 16 GB RAM, 16 logical processors, RTX 3050 Laptop GPU with
+approximately 4 GB VRAM. No model was pulled/downloaded by this implementation.
+Other installed models were inspected but not selected for this laptop workload.
+
+`python scripts/verify_local_ai.py` used a harmless Pytest assertion fixture,
+controlled GitHub transport and **real local Ollama**. LangGraph completed;
+Pydantic schema and exact evidence references validated; one finding/two evidence
+records persisted and reloaded through the authenticated report path. The exact
+random disposable test account and its cascaded report were then removed.
+Initial measurement: 11.41s; final verification: **8.77s**. Ollama ps reported
+2.3 GB loaded size, **100% GPU**, 8,192 context, llamacpp runner. These are observed
+local fixture timings, not a general benchmark. Evidence completeness was complete;
+no context truncation occurred for this small live fixture. Truncation/deadline/
+provider error behavior is separately covered by deterministic automated tests.
+
+Only the native loopback provider is configured/invoked; no paid/hosted LLM API,
+model write tool or trace export was used. Prompts, raw model output, credentials,
+signed URLs and full logs were not printed or saved. No packet-level audit is
+claimed. Local inference does not eliminate hallucination or secret-redaction risks.
+
+### GitHub and operational status
+
+The existing stored user authorization successfully read installation and run
+metadata for Shyamsundar0606/CodeMate-AI. Failure-filtered run listing returned zero
+accessible failed runs and has_next=false. The historical successful run remained
+successful. Therefore real GitHub-backed failure diagnosis remains unverified;
+fixture-based success is not presented as live GitHub failure success.
+
+The existing GitHub App permissions, credentials and backend/.env were preserved.
+Model defaults are added only to the public backend environment example. Existing
+migration revisions were not rewritten. Both codemate-postgres (5433) and
+voxhire-postgres (5432) remained running; no VoxHire reset/change was performed.
+Only separate disposable CI validation containers were removed. E2E-owned API8001
+and frontend3000 processes/accounts were cleaned by the guarded runner.
+
+CI workflow main.yml is unchanged: pinned lock installation, isolated PostgreSQL,
+Alembic, warnings-as-errors Pytest, Ruff, npm ci, unit tests/lint/typing/build and
+contents:read. Linux backend verification used the exact workflow commands with a
+fresh isolated service; no local env files/model server/GPU/credentials were needed.
+A new GitHub-hosted workflow run was not triggered because no commit/push was made.
+The dependency graph required compatible websockets 16.1.1 for LangGraph SDK's
+<17 constraint; the updated lockfile passed Windows and Linux installs/pip check.
+Next.js and frontend dependency versions were unchanged. No force fixes, warning
+suppression or test disabling was applied. No formal Python advisory audit is claimed.
+
+### Corrected verification failures and limitations
+
+An initial fixture expected metadata for extra jobs not available in the controlled
+transport; missing resource evidence now yields a partial report rather than a
+fabricated cause. A recovery test needed fresh session state before simulating a
+second interruption. Initial type/test import and Windows punctuation issues were
+fixed. jsdom lacks native summary Enter expansion, so unit tests verify focus/click
+and real Edge verifies keyboard activation.
+
+One browser run was started before Pytest exited, sharing the test database; it
+was invalid and produced two failures. Both suites were rerun sequentially, and the
+final complete results above pass. The first Linux harness used a read-only mount,
+causing Ruff/Pytest cache errors under warnings-as-errors. It was corrected to a
+writable temporary checkout matching GitHub runners; no warning was suppressed.
+
+Limits: first bounded job page only (maximum four jobs); small-model quality;
+syntactic reference/quote grounding does not prove all prose; imperfect redaction;
+cooperative cancellation may wait for in-flight inference/network timeout;
+manual worker lifecycle; at-least-once job-level recovery rather than exactly-once
+node checkpointing; worker-driven retention does not delete external backups;
+Edge desktop/mobile coverage is not a complete browser/security audit.
+
+Read docs/AI_DIAGNOSTICS.md for architecture, API contracts, illustrative structured
+report and exact Windows startup/test commands. Milestones 6 and 7 have not started.
+No changes were committed or pushed. Git baseline remains 2e3239c.
+
+### Files created
+
+- `backend/alembic/versions/0003_ai_investigations.py`
+- `backend/app/ai/__init__.py`
+- `backend/app/ai/errors.py`
+- `backend/app/ai/evidence.py`
+- `backend/app/ai/graph.py`
+- `backend/app/ai/schemas.py`
+- `backend/app/ai/worker.py`
+- `backend/app/api/routes/ai.py`
+- `backend/app/integrations/ollama/__init__.py`
+- `backend/app/integrations/ollama/client.py`
+- `backend/app/models/ai_investigation.py`
+- `backend/app/services/ai_investigation_service.py`
+- `backend/scripts/ai_worker.py`
+- `backend/scripts/verify_local_ai.py`
+- `backend/tests/ai_mock.py`
+- `backend/tests/test_ai.py`
+- `docs/AI_DIAGNOSTICS.md`
+- `frontend/src/app/(protected)/dashboard/ai/investigations/[id]/page.tsx`
+- `frontend/src/app/(protected)/dashboard/ai/page.tsx`
+- `frontend/src/components/ai/diagnostics.tsx`
+- `frontend/src/lib/ai.ts`
+- `frontend/src/tests/ai.test.tsx`
+
+### Files modified
+
+- `README.md`
+- `backend/.env.example`
+- `backend/alembic/env.py`
+- `backend/app/core/config.py`
+- `backend/app/core/logging.py`
+- `backend/app/main.py`
+- `backend/app/models/__init__.py`
+- `backend/requirements-dev.lock.txt`
+- `backend/requirements.txt`
+- `backend/tests/test_database.py`
+- `docs/ARCHITECTURE.md`
+- `docs/GITHUB_INTEGRATION.md`
+- `docs/PROGRESS.md`
+- `docs/WINDOWS.md`
+- `frontend/e2e/workspace.spec.ts`
+- `frontend/next-env.d.ts`
+- `frontend/scripts/e2e_backend.py`
+- `frontend/src/app/globals.css`
+- `frontend/src/components/dashboard/dashboard-shell.tsx`
+- `frontend/src/components/github/investigation.tsx`
+- `frontend/src/lib/api/client.ts`
+- `frontend/src/lib/auth/session.ts`
+- `frontend/src/tests/session.test.ts`

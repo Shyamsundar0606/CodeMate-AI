@@ -21,7 +21,9 @@ class RequestLogMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         response.headers["X-Request-ID"] = request.state.request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
-        if request.url.path.startswith(("/api/v1/github", "/api/v1/auth/github")):
+        if request.url.path.startswith(
+            ("/api/v1/github", "/api/v1/auth/github", "/api/v1/ai", "/api/v1/auth/ai")
+        ):
             response.headers["Cache-Control"] = "no-store"
             response.headers["Referrer-Policy"] = "no-referrer"
         logger.info(

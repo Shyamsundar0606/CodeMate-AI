@@ -2,7 +2,14 @@ from alembic import context
 from app.core.config import Settings
 from app.db.base import Base
 from app.db.session import build_engine
-from app.models import GitHubConnection, GitHubOAuthState, LoginThrottle, RefreshSession, User  # noqa: F401
+from app.models import (  # noqa: F401
+    AIInvestigation,
+    GitHubConnection,
+    GitHubOAuthState,
+    LoginThrottle,
+    RefreshSession,
+    User,
+)
 
 config = context.config
 settings = Settings()

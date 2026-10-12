@@ -304,3 +304,40 @@ pass. The production-only audit is zero; full audit retains the same five high d
 findings. Development migration is `0002_github_integration` with no schema drift.
 Live GitHub authorization remains pending manual App setup and the checklist in
 [GITHUB_INTEGRATION.md](GITHUB_INTEGRATION.md). Milestone 5 has not started.
+
+
+## Milestone 5 local AI startup
+
+Do not overwrite existing .env secrets or recreate the working virtual environment.
+Apply `0003_ai_investigations` with the normal Alembic upgrade command. The worker
+is a separate process and is required for queued investigations and retention.
+
+```powershell
+Get-Command ollama
+ollama list
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+# Only if the selected model is missing; never an automatic download:
+ollama pull qwen2.5-coder:3b
+# Only if the endpoint is stopped, in its own foreground terminal:
+ollama serve
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.lock.txt
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe scripts\ai_worker.py
+```
+
+Start FastAPI and Next.js in separate terminals using the existing commands above.
+Open http://localhost:3000/dashboard/ai after signing in. Run Pytest, browser E2E
+and the live fixture verifier sequentially; all use the exclusive guarded test DB.
+The exact complete command sequence and model/privacy/worker lifecycle are in
+[AI_DIAGNOSTICS.md](AI_DIAGNOSTICS.md). The local fixture command, after migrations:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe scripts\verify_local_ai.py
+ollama ps
+```
+
+This verifier commits/reloads a report for a harmless fixture, then deletes only
+its disposable test account. It does not create a real failed GitHub workflow.
+VoxHire on port 5432 remains separate and untouched.

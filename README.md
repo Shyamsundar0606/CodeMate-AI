@@ -1,15 +1,20 @@
 # CodeMate AI
 
-Autonomous Developer & DevOps Voice Agent. **Milestones 1-3 complete; Milestone 4
-implemented, live GitHub verification pending.** The authenticated Next.js workspace
-now supports a secure read-only GitHub App connection, repository activity, GitHub
-Actions monitoring and bounded job logs through FastAPI/PostgreSQL.
+Autonomous Developer & DevOps Voice Agent. Milestones 1-4 remain implemented;
+Milestone 5 adds local, read-only AI CI failure investigations through Ollama,
+LangGraph, FastAPI and PostgreSQL. The existing secure GitHub App integration,
+authentication, repository explorer and bounded job logs remain available.
 
-GitHub App registration and live credentials require manual setup. Until configured,
-the connection page explains the setup requirement. No live OAuth success is claimed.
-See [GitHub setup and security](docs/GITHUB_INTEGRATION.md),
-[actual verification results](docs/PROGRESS.md) and [Windows commands](docs/WINDOWS.md).
-AI, Ollama, voice and autonomous repository changes remain future milestones.
+Open `/dashboard/ai` for model status and saved investigations, or Analyze with AI
+on a completed unsuccessful CI/CD run. Successful workflows are summarized without
+inventing failures or invoking the model. Start the dedicated AI worker separately;
+Ollama is optional for all existing functionality.
+
+See [AI diagnostics and exact Windows commands](docs/AI_DIAGNOSTICS.md),
+[GitHub setup and security](docs/GITHUB_INTEGRATION.md),
+[actual verification results](docs/PROGRESS.md) and [Windows startup](docs/WINDOWS.md).
+Voice and developer automation have not started. No commits or workflow writes
+are performed by AI diagnostics.
 
 ## Quick start — Windows PowerShell
 
@@ -65,7 +70,7 @@ Use localhost consistently for browser URLs and the configured API origin.
 | Development database / role | codemate_db / codemate_user |
 | Test database / role | codemate_test_db / codemate_test_user |
 | Persistent volume | codemate-ai-postgres-data |
-| Alembic head | 0002_github_integration |
+| Alembic head | 0003_ai_investigations |
 
 VoxHire's port 5432 and all of its resources remain untouched. Development and test
 roles have different generated passwords, own their own databases, and cannot
@@ -253,7 +258,7 @@ Docker Compose at root     CodeMate-only PostgreSQL 16
 Production-minded does not mean deployment-hardened: TLS/reverse proxy, backups,
 registration abuse controls, secret rotation, retention jobs, and CI/deployment
 infrastructure remain future work. Milestone 3 is COMPLETE; Milestone 4 is implemented
-with live GitHub verification pending.
+with local AI diagnostic verification recorded in PROGRESS.md.
 
 
 ## GitHub workspace
@@ -272,3 +277,24 @@ read-only App permissions and callback. No external application is registered fo
 Automated GitHub tests use a test-only controlled HTTP fixture, not personal GitHub
 credentials. Current verification: 135 backend, 73 frontend and seven Edge E2E tests.
 The five existing dev-tooling audit findings remain documented; production audit is zero.
+
+
+## Milestone 5 worker and local model
+
+The installed model selected for this laptop is `qwen2.5-coder:3b`. No download is
+performed automatically. From a separate backend PowerShell terminal:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe scripts\ai_worker.py
+```
+
+Reports persist in PostgreSQL with per-user ownership, bounded redacted excerpts,
+a 30-day terminal-report retention policy while the worker runs, cancellation,
+finite retry and explicit deletion. No raw full logs or prompts are stored.
+The worker recovers interrupted jobs under PostgreSQL advisory locks; it does not
+claim exactly-once processing. Existing CI uses mocked local model responses and
+requires no Ollama server, GPU, downloads or personal credentials.
+
+The earlier verification counts in foundation sections are historical; current
+Milestone 5 results and separate live inference/GitHub status are in PROGRESS.md.
