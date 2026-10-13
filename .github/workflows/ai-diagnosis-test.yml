@@ -1,0 +1,17 @@
+name: AI Failure Diagnosis Test
+
+on:
+  push:
+    branches:
+      - test/ai-failure-diagnosis
+
+permissions:
+  contents: read
+
+jobs:
+  deliberate-failure:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reproduce a test dependency error
+        run: |
+          python -c "import codemate_missing_demo_dependency"
