@@ -9,6 +9,24 @@ from sqlalchemy.engine import make_url
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
+    voice_enabled: bool = True
+    whisper_model_size: Literal["base", "small"] = "base"
+    whisper_model_path: str = "models/whisper-base"
+    whisper_device: Literal["cpu", "auto", "cuda"] = "cpu"
+    whisper_compute_type: Literal["int8", "float32", "float16"] = "int8"
+    voice_max_recording_seconds: int = Field(default=30, ge=1, le=60)
+    voice_max_upload_bytes: int = Field(default=8388608, ge=1024, le=16777216)
+    voice_session_ttl_seconds: int = Field(default=1800, ge=60, le=86400)
+    voice_action_ttl_seconds: int = Field(default=120, ge=10, le=300)
+    voice_timeout_seconds: int = Field(default=60, ge=5, le=180)
+    voice_max_concurrent_requests: int = Field(default=1, ge=1, le=2)
+    voice_requests_per_minute: int = Field(default=12, ge=1, le=60)
+    voice_retain_transcripts: bool = False
+    voice_tts_enabled: bool = True
+    piper_model_path: str = "models/en_US-ljspeech-medium.onnx"
+    piper_config_path: str = "models/en_US-ljspeech-medium.onnx.json"
+    piper_speaker_id: int = Field(default=0, ge=0, le=1000)
+
     app_name: str = "CodeMate AI"
     app_env: Literal["development", "test", "production"] = "development"
     database_url: SecretStr
@@ -45,6 +63,12 @@ class Settings(BaseSettings):
     ai_max_retries: int = Field(default=2, ge=0, le=2)
     ai_investigation_timeout_seconds: int = Field(default=240, ge=30, le=360)
     ai_investigation_retention_days: int = Field(default=30, ge=1, le=90)
+
+    @model_validator(mode="after")
+    def voice_model_directory(self) -> "Settings":
+        if self.whisper_model_size == "small" and self.whisper_model_path == "models/whisper-base":
+            self.whisper_model_path = "models/whisper-small"
+        return self
 
     @field_validator("ollama_base_url")
     @classmethod

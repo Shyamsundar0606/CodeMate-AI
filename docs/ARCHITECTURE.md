@@ -302,3 +302,95 @@ collapsible evidence and qualitative confidence. Model output never executes.
 Success metadata bypasses inference. No repository/source/workflow writes were
 added. See [AI_DIAGNOSTICS.md](AI_DIAGNOSTICS.md) for the graph, exact limits,
 threat model, Windows commands and remaining operational limits.
+
+
+## Milestone 6: bounded local voice agent
+
+`/dashboard/voice` supports typed commands and explicit browser push-to-talk.
+MediaRecorder uploads a raw WebM/Ogg/MP4 Blob through the existing authenticated
+client. JWT, refresh-cookie ownership, origin/custom-header checks and CSRF are
+required for all mutations under `/api/v1/auth/voice`. Read-only status and history
+use `/api/v1/voice`. No bearer tokens appear in URLs or browser storage.
+
+A separate bounded LangGraph performs typed intent interpretation and authorized
+tool dispatch. Known commands are deterministic; variations use structured local
+Ollama output validated against an enum-only Pydantic schema. The model cannot
+supply API paths, run IDs, installations, SQL, shell instructions or executable
+URLs. Context targets come only from authorized GitHub responses. Ambiguous
+repository lookups ask the user to select a real owner/repository. Pipeline lookup
+uses the first 30 runs of that repository; repository discovery is bounded to the
+first 100 repositories of up to five installations. It never claims exhaustive
+search across arbitrary organizations. Exact selected runs are rechecked through
+the existing GitHub service. Logs link to the existing secure log viewer rather
+than being copied wholesale into speech or model context. General explanations
+are labeled as general knowledge and do not claim a GitHub query.
+
+VoiceSession stores owner, expiry and a small repository/workflow context;
+VoiceTurn keeps up to 20 bounded assistant replies and intent metadata per session.
+Transcripts are not retained unless VOICE_RETAIN_TRANSCRIPTS is explicitly enabled.
+VoiceAction stores the immutable exact target, expiry, state and resulting
+investigation ID. VoiceBudget maintains a per-user one-minute request budget.
+Expiry is enforced on every access. Expired sessions and cascading metadata are
+removed on the next voice mutation by their owner. Idle expired data can remain
+on disk until that cleanup; external backups have their own retention policies.
+The additive 0004 migration does not rewrite users, connections or investigations.
+
+Investigation creation requires a stored pending action and an explicit Confirm
+button. Voice-only yes only redisplays the pending confirmation. Confirm rechecks
+session ownership, active application session, original GitHub connection and the
+exact workflow status/conclusion. Altered request bodies are rejected. Used,
+cancelled and expired actions cannot execute. A dedicated PostgreSQL session
+advisory lock serializes commands/confirmations per user across service commits;
+it is released in finally. Existing investigation creation provides same-run
+idempotency, including recovery if the API stops after creation but before marking
+the action used. Confirmation replays return an error rather than silently running
+again. No repository modifications or deployments are exposed.
+
+Speech inference is lazy and serialized in owned subprocesses. PyAV bundles the
+FFmpeg decoding libraries; no external FFmpeg executable is required. MIME and
+container signatures must agree; decoded duration and sample count are bounded.
+Empty/silent recordings produce errors, not invented transcripts. faster-whisper
+uses a configured local directory and local_files_only=True. CPU int8 is default;
+auto/CUDA requests fall back to CPU if detection or initialization fails. Piper
+loads a configured local ONNX voice/config lazily. Inference timeout terminates
+owned speech workers, which can restart on the next request. Audio remains in
+memory and is not persisted by the API. The explicit smoke script may save a
+synthetic WAV in an ignored verification directory.
+
+The command gate is configured per API process and the speech gate is serialized
+per process. Run one API worker for predictable laptop model/RAM limits; multiple
+API processes multiply model copies and process-local concurrency limits. Durable
+per-user rate limits and confirmation locks still use PostgreSQL. Status reports
+file installation, not proof that model initialization or physical audio devices
+will succeed. Browser upload timeout is 15 seconds; inference timeout defaults to
+60 seconds. Local Ollama intent/explanation calls have 30-second timeouts, no
+implicit retries, and bounded response sizes through the existing Ollama adapter.
+
+All responses are plain text. Internal routes are constructed by backend tools
+and independently allowlisted in the frontend. Piper speaks only an owned saved
+assistant turn, capped at 800 characters, using existing secret-pattern redaction.
+Redaction is imperfect; short summaries may still contain unforeseen sensitive
+content. Nothing executes text from transcripts, GitHub content or generated
+responses. Audit logs contain event/intent metadata, not audio or transcript text.
+
+### Voice REST contracts
+
+| Method | Path | Body or response |
+| --- | --- | --- |
+| GET | /api/v1/voice/status | Enabled/model-file/Ollama state and audio limits |
+| POST | /api/v1/auth/voice/transcribe?language=en | Raw audio Blob; returns text and detected language; en/fr/auto allowed |
+| POST | /api/v1/auth/voice/command | text, request_id UUID, optional session_id UUID; returns typed reply, safe route, choices or pending action |
+| GET | /api/v1/voice/sessions/{id} | Up to 20 owner-scoped saved replies |
+| POST | /api/v1/auth/voice/confirm | session_id and action_id only; returns confirmed investigation route |
+| POST | /api/v1/auth/voice/cancel | session_id and action_id only; cancels pending action |
+| POST | /api/v1/auth/voice/speech | session_id and turn_id only; returns audio/wav with no-store |
+
+All routes require JWT. Mutations also require refresh-cookie ownership and CSRF.
+Commands use request UUID deduplication within a supplied session. The browser
+stores only that conversation UUID under an account-specific sessionStorage key;
+it sends no retained audio or authentication credentials to model downloads.
+
+Hosted LangGraph tracing is explicitly disabled for voice, matching the existing
+local investigation graph. Intent state distinguishes previous-workflow references
+from explicit latest-failed searches; failure searches also validate conclusions
+from returned GitHub data. Repository changes discard older workflow references.

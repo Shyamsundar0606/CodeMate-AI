@@ -298,3 +298,12 @@ requires no Ollama server, GPU, downloads or personal credentials.
 
 The earlier verification counts in foundation sections are historical; current
 Milestone 5 results and separate live inference/GitHub status are in PROGRESS.md.
+
+
+### Milestone 6 local Voice Agent
+
+Open `/dashboard/voice` after signing in. Typed commands work without a microphone;
+push-to-talk uses local faster-whisper and optional speech uses Piper. Investigation
+creation requires an explicit confirmation button. See [Windows setup](docs/WINDOWS.md)
+and [voice API/security architecture](docs/ARCHITECTURE.md) for model setup, licensing,
+privacy, resource limits and the manual hardware verification checklist.

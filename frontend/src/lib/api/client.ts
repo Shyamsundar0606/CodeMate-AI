@@ -22,22 +22,22 @@ export class ApiClient {
 
   async request<T>(path: string, options: RequestInit = {}, schema?: z.ZodType<T>): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), (path.includes("/github/") || path.includes("/ai/")) ? 30000 : this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), (path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) ? (path.includes("/voice/") ? 180000 : 30000) : this.timeoutMs);
     const abort = () => controller.abort();
     if (options.signal?.aborted) controller.abort();
     options.signal?.addEventListener("abort", abort, { once: true });
     const headers = new Headers(options.headers);
     headers.set("Accept", "application/json");
-    if (options.body) headers.set("Content-Type", "application/json");
+    if (options.body && !(options.body instanceof Blob)) headers.set("Content-Type", "application/json");
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         ...options, headers, credentials: "include", cache: "no-store", signal: controller.signal,
       });
       if (!response.ok) {
-        if (path.includes("/github/") || path.includes("/ai/")) {
+        if (path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) {
           const body = await response.json().catch(() => null);
           const detail = body?.detail;
-          if (typeof detail?.code === "string" && /^(?:GITHUB|AI)_[A-Z_]+$/.test(detail.code) && typeof detail.message === "string") {
+          if (typeof detail?.code === "string" && /^(?:GITHUB|AI|VOICE)_[A-Z_]+$/.test(detail.code) && typeof detail.message === "string") {
             throw new ApiError(detail.message.slice(0, 500), response.status, "http", detail.code, typeof detail.retry_after === "number" ? detail.retry_after : undefined);
           }
         }
@@ -49,6 +49,10 @@ export class ApiClient {
           429: "Too many sign-in attempts. Please wait a few minutes and try again.",
         };
         throw new ApiError(messages[response.status] || "The service could not complete this request. Please try again.", response.status);
+      }
+      if (response.headers.get("content-type")?.startsWith("audio/wav")) {
+        if (schema || !path.endsWith("/voice/speech")) throw new ApiError("The service returned an unexpected response.", undefined, "protocol");
+        return await response.blob() as T;
       }
       if (response.status === 204) return undefined as T;
       let data: unknown;

@@ -341,3 +341,181 @@ ollama ps
 This verifier commits/reloads a report for a harmless fixture, then deletes only
 its disposable test account. It does not create a real failed GitHub workflow.
 VoxHire on port 5432 remains separate and untouched.
+
+
+## Milestone 6 local voice setup (Python 3.12, Windows 11)
+
+These additions use the existing virtual environment and PostgreSQL port 5433.
+Do not overwrite backend/.env, frontend/.env.local, or another project's resources.
+The example configuration documents defaults that work when FastAPI starts from
+backend. Earlier milestone revision notes above are historical; the current head
+is 0004_voice_agent. Ollama is required for natural-language interpretation and
+general explanations, while known navigation commands work without it.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe --version
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.lock.txt
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -c "import ctranslate2; print(ctranslate2.get_supported_compute_types('cpu'))"
+```
+
+Verified direct runtimes: faster-whisper 1.2.1, CTranslate2 4.8.3, PyAV 19.0.1,
+piper-tts 1.8.0, ONNX Runtime 1.31.0. Official Windows wheels were installed; no
+unknown installer scripts or separate FFmpeg executables were used. All transitive
+versions are recorded in requirements-dev.lock.txt. CI installs dependencies but
+never downloads or initializes speech models in ordinary tests.
+
+### Explicit first-run models
+
+Run the following only after approving the model downloads. The script downloads
+from Systran/faster-whisper-base and rhasspy/piper-voices through official Hugging
+Face endpoints. It pins resolved commit revisions and records voice SHA-256 hashes
+and the model card in ignored backend/models. It never executes downloaded scripts.
+Models are not committed. The user approved this download on 2026-10-14.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe scripts/setup_voice_models.py --download
+# Optional small multilingual model, increases RAM and processing time:
+# .\.venv\Scripts\python.exe scripts/setup_voice_models.py --download --whisper small
+# Then configure WHISPER_MODEL_SIZE=small and WHISPER_MODEL_PATH=models/whisper-small.
+```
+
+Piper uses en_US-ljspeech-medium (one English female speaker, 22050 Hz). The
+[official model card](https://huggingface.co/rhasspy/piper-voices/raw/main/en/en_US/ljspeech/medium/MODEL_CARD)
+identifies the [LJ Speech dataset](https://keithito.com/LJ-Speech-Dataset/) as public
+domain and describes training from scratch by Bryce Beattie. The voice repository metadata declares MIT licensing. Preserve upstream license
+and copyright notices and include attribution to the Piper voices project and
+voice author Bryce Beattie when redistributing the selected model. The setup
+script retains both the repository README and this model card with pinned source
+revisions; the public-domain dataset status does not remove model distribution
+notice requirements. The [Piper engine](https://github.com/OHF-Voice/piper1-gpl)
+is GPL-3.0-or-later, separately from the dataset/model card. Distributing Piper
+requires preserving its license and complying with its GPL source obligations.
+The Python wheel includes COPYING and bundled dependency license notices.
+French STT is supported by the multilingual Whisper base/small models. This page
+offers English TTS only; French voice output requires an independently installed,
+license-reviewed French voice and is not offered by the current UI.
+
+### Services and verification
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infrastructure\start-postgres.ps1
+Set-Location backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic check
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+# If the existing local model is absent, explicitly approve/download it:
+# ollama pull qwen2.5-coder:3b
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+# In a separate backend PowerShell for investigation processing:
+.\.venv\Scripts\python.exe scripts/ai_worker.py
+# In a separate frontend PowerShell:
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+npm.cmd ci
+npm.cmd run dev
+```
+
+Use one API process for practical model memory/concurrency limits. Model paths
+are server configuration, never user-supplied filesystem paths. No .env settings
+were overwritten during implementation. Both whisper and Piper defaults point to
+the approved downloaded files relative to backend.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+$env:PYTHONPATH = $PWD.Path
+.\.venv\Scripts\python.exe scripts/verify_voice_local.py
+Remove-Item Env:PYTHONPATH
+.\.venv\Scripts\python.exe -m pytest -q -W error --tb=no
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+Set-Location ..\frontend
+npm.cmd test
+npm.cmd run lint -- --max-warnings=0
+npm.cmd run typecheck
+npm.cmd run build
+```
+
+The local smoke script generates synthetic English speech through Piper, decodes
+and transcribes it with real faster-whisper, then asks real Ollama to classify a
+natural phrasing. It is not a physical microphone or listening test.
+
+### Manual hardware and live-account checklist
+
+Sign in at http://localhost:3000/dashboard/voice. In Windows Settings enable
+microphone privacy access for desktop apps, then allow localhost microphone access
+in Edge/Chrome. Browser recording requires a secure context; localhost qualifies.
+No microphone is accessed until Start recording is pressed. Stop transcribes;
+Cancel discards audio. A maximum 30-second recording is stopped automatically.
+
+1. Record "CodeMate, open my GitHub repositories." Review/edit the transcript,
+   send it, and click the returned internal link.
+2. Type "List my connected repositories." Choose a listed owner/repository.
+   Then ask "Show my latest CI pipeline" and "Find the latest failed workflow".
+   Verify the IDs/status against your authorized GitHub installation.
+3. Say/type "Analyze that workflow." Check owner, repository, run and status.
+   Cancel first and verify no investigation starts. Repeat and explicitly Confirm.
+   Open the saved report; repeated confirmation must not create another report.
+4. Ask "Explain what caused this failure" after an investigation completes.
+   Generate voice response, then Play, Pause, Stop playback and Replay. Check
+   that actual output is audible and that no audio overlaps a new request.
+5. Test permission denial, cancellation, browser refresh, New conversation,
+   expired sessions/actions, unknown repositories and rapid repeated clicks.
+
+Known deterministic phrases: Open dashboard/profile/settings/AI diagnostics,
+Open CI/CD monitoring, Select repository owner/repo, List connected repositories,
+Show latest pipeline, Find latest failed workflow, Show failed jobs, Open workflow
+logs, Analyze that workflow, Show previous investigations, Open latest report,
+Explain what caused this failure, What can you do, yes and cancel. Natural variations
+use local Ollama. Voice-only yes never authorizes investigation creation.
+
+Troubleshooting: missing speech model means check the configured model files and
+restart/check services. Inference timeout suggests shorter input or CPU int8.
+Permission denial does not block typed commands. Piper generation does not auto-play;
+press Play to satisfy browser autoplay rules. GitHub authorization errors require
+reviewing the existing GitHub connection/selected repositories. Expired conversation
+errors require New conversation. Restore codemate-postgres on 5433 for database
+errors; never point tests at development data. Nothing downloads models in response
+to these errors. Physical microphone, audible output and the personal live GitHub
+flow remain separate manual checks until verified by the user.
+
+
+### Explicit real-model Edge fixture check
+
+This optional verifier is separate from ordinary CI and uses real local speech
+models with controlled GitHub data, synthetic microphone input and a disposable
+account. Do not run Pytest concurrently. Use one fresh prefix matching e2e_ plus
+ten hex digits consistently. Ensure ports 3000/8001 are free before launching
+servers, and stop only servers you own. No personal browser session is used.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+$env:PYTHONPATH = $PWD.Path
+.\.venv\Scripts\python.exe scripts/verify_voice_local.py --investigate
+Remove-Item Env:PYTHONPATH
+Set-Location ..
+.\backend\.venv\Scripts\python.exe frontend/scripts/e2e_backend.py prepare e2e_637af28490
+$env:CODEMATE_REAL_VOICE = '1'
+.\backend\.venv\Scripts\python.exe frontend/scripts/e2e_backend.py serve e2e_637af28490
+```
+
+Start `npm.cmd run dev` in another frontend terminal. In a third frontend terminal:
+
+```powershell
+$env:E2E_ACCOUNT_PREFIX = 'e2e_637af28490'
+node.exe scripts/verify-voice-browser.mjs
+```
+
+Replace the example prefix consistently for a fresh run. The helper guards the
+test role/database on port 5433, never loads live GitHub credentials, and uses a
+unique mock GitHub identity per prefix. The verifier checks recording/transcription,
+workflow facts, Cancel, one explicit Confirm, Piper decoding/playback controls and
+history restoration. It does not establish physical microphone or audible output.
+Stop the two test servers with Ctrl+C in their own terminals, then clean only that
+prefix from the project root:
+
+```powershell
+.\backend\.venv\Scripts\python.exe frontend/scripts/e2e_backend.py cleanup e2e_637af28490
+```

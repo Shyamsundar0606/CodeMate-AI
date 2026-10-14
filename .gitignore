@@ -21,3 +21,7 @@ coverage/
 .e2e-lock/
 test-results/
 playwright-report/
+
+# Local speech model weights and audio verification artifacts
+backend/models/
+backend/.voice-verification/
