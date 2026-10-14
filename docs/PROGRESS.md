@@ -798,3 +798,116 @@ No changes were committed or pushed. Git baseline remains 2e3239c.
 - `frontend/src/lib/api/client.ts`
 - `frontend/src/lib/auth/session.ts`
 - `frontend/src/tests/session.test.ts`
+
+## 2026-10-13 - Investigation refresh feedback fix
+
+The report's Refresh investigation handler discarded the refetch result and had
+no explicit feedback. A successful GET returning identical completed data therefore
+appeared to do nothing. A refetch failure could also replace the cached report
+with the page-level error state.
+
+Updated `frontend/src/components/ai/diagnostics.tsx` to announce
+"Refreshing investigation..." during refresh and "Investigation updated" after
+success, including unchanged responses. The button is temporarily disabled during
+fetching. Failed refreshes retain the last loaded report and display a useful
+error with a retry option. The polite live region supports screen-reader feedback;
+keyboard activation remains available. Refresh uses the existing authenticated GET
+only and does not restart, retry, or reanalyze investigations. Backend JWT, cookie,
+CSRF, ownership, and authorization behavior is unchanged.
+
+Added four regression tests in `frontend/src/tests/ai.test.tsx` covering unchanged
+completed data, changed data, loading/keyboard behavior, and API error recovery.
+Existing pending local-model button changes and generated Next.js type references
+were preserved. No unrelated application code was changed.
+
+Verification results:
+
+- Backend: 191 tests passed with warnings treated as errors (`pytest -q -W error`).
+- Frontend: all 106 unit tests passed.
+- Ruff lint passed; formatting check reported 74 files already formatted.
+- ESLint passed with zero warnings; TypeScript verification passed.
+- Next.js production build passed using the existing isolated `.next-e2e` output
+  configuration; the original `next-env.d.ts` contents were restored afterwards.
+- Real Microsoft Edge verification passed with a disposable account and the
+  existing guarded PostgreSQL test setup. The browser used the real frontend and
+  isolated authenticated backend, with controlled GitHub/Ollama test fixtures.
+  A completed successful investigation (attempt 1, no failure detected, no model)
+  returned HTTP 200 through a single GET. Keyboard activation showed loading and
+  disabled-button states, then success feedback. Report data remained identical;
+  no refresh POST or JavaScript page errors occurred.
+- A simulated browser network failure displayed the error/retry state while
+  retaining the report; retry through the real test backend recovered successfully.
+- The temporary test API and disposable account were cleaned up. A read-only
+  snapshot comparison confirmed the existing personal investigation's status,
+  stage, attempt count, report hash, and completion timestamp remained unchanged.
+
+Verification against the user's exact owner-authenticated investigation page
+remains **pending**, as requested. No personal browser session was accessed.
+No commits or pushes were made, and Milestone 6 was not started.
+
+## 2026-10-13 - Start investigation form investigation and feedback
+
+Checked the development database read-only before submitting: no investigation
+matched Shyamsundar0606/CodeMate-AI, installation 170278743, run 38441490639.
+No live investigation was created and no existing development report was changed.
+
+The original form was tested before editing in a disposable Microsoft Edge
+session against the guarded test backend. The exact supplied identifiers passed
+native validation and generated POST /api/v1/auth/ai/investigations. The disposable
+account correctly received an authorization error for that live repository.
+An authorized controlled failed-run fixture navigated successfully with the original
+code. No JavaScript page errors occurred. These results do not establish the cause
+of the user's original live-account symptom, and HMR was not identified as its cause.
+A request for the user's visible error/HTTP status remains unanswered.
+
+Confirmed feedback gaps were addressed only in AIOverview:
+
+- Persistent native-validation feedback when the browser prevents submission.
+- Accessible loading and accepted-response announcements, plus an explicit report
+  link if navigation is delayed, and a history refresh after acceptance.
+- A synchronous submission guard and disabled button after acceptance prevent
+  repeated POSTs while pending or awaiting navigation.
+- Actionable errors point to GitHub authorization and advise checking history after
+  timeouts before manually resubmitting. POSTs are never automatically retried.
+- Repository inputs are trimmed; numeric IDs are bounded to safe positive integers.
+
+Authentication, session locking, CSRF bootstrap, backend authorization, ownership,
+worker lifecycle, GitHub permissions, and backend idempotent creation are unchanged.
+Existing backend tests cover same-run reuse, concurrent creation and admission.
+Four new frontend regressions cover invalid forms, the exact large identifiers,
+loading/rapid clicks, success fallback, and API failure recovery. Existing pending
+local-model/refresh changes and next-env.d.ts contents were preserved.
+
+Real Edge verification after the change passed: persistent validation with no POST,
+visible authorization errors, disabled/loading feedback, one POST on rapid double
+click, real authenticated navigation, and reuse of the same report on resubmission.
+The fixture used controlled GitHub/Ollama transports and the isolated test database;
+it does not verify live GitHub access for the user's account. Zero page errors.
+Temporary test server and account were cleaned up before backend tests.
+
+Frontend: 110 tests passed; ESLint with zero warnings passed; TypeScript passed;
+Next.js production build passed in the supported isolated output directory. The
+first type/build check caught unsupported Testing Library query options in the new
+tests; those options were corrected before the successful reruns. Ruff lint passed
+and formatting reported 74 files already formatted.
+The first backend run had 190 passes and one fixture-setup PostgreSQL connection
+timeout during a prolonged execution pause; the full warnings-as-errors suite was
+rerun. Its final result is recorded below.
+
+The reported exact live-account failure remains unconfirmed. The supplied live
+workflow was not submitted from a personal session. No credentials were modified,
+no commits/pushes were made, and no milestone beyond 5 was started.
+
+Backend final verification limitation: the rerun tool session became unavailable
+before its result could be retrieved. A subsequent verifiable full attempt ended
+with 191 fixture-setup errors in 9.08 seconds. PostgreSQL was no longer listening
+on 5433, and the Docker Desktop Linux engine pipe was unavailable. Therefore the
+backend suite is **not passing in this verification session**. The earlier run's
+190 passes / one database timeout must not be presented as a complete pass. No
+backend tests were disabled and no database/container settings were changed to
+work around this outage. Restore Docker/PostgreSQL and rerun `pytest -q -W error`
+to complete backend verification.
+
+Files changed for this task: `frontend/src/components/ai/diagnostics.tsx`,
+`frontend/src/tests/ai.test.tsx`, and `docs/PROGRESS.md`. The preexisting generated
+`frontend/next-env.d.ts` change was preserved. Git diff whitespace check passed.

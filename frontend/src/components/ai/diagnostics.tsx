@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
 import { apiErrorMessage } from "@/lib/api/client";
 import { aiStatusSchema, historySchema, investigationSchema, useAI, type RunContext } from "@/lib/ai";
@@ -39,43 +39,73 @@ export function AnalyzeRun({ context, status, conclusion }: { context: RunContex
 export function AIOverview() {
   const { session } = useAuth(); const router = useRouter();
   const [page, setPage] = useState(1);
+  const submitting = useRef(false);
+  const [startedId, setStartedId] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState("");
+  const [modelChecked, setModelChecked] = useState(false);
   const [pending, setPending] = useState(false); const [error, setError] = useState<unknown>(null);
   const provider = useAI("/api/v1/ai/status", aiStatusSchema);
   const history = useAI("/api/v1/ai/investigations?page=" + page, historySchema);
   async function start(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (pending) return;
+    event.preventDefault(); if (submitting.current) return;
+    submitting.current = true;
     const fields = new FormData(event.currentTarget);
-    setPending(true); setError(null);
+    setPending(true); setError(null); setValidationError("");
     try {
       const item = await session.post("/api/v1/auth/ai/investigations", investigationSchema, {
-        owner: fields.get("owner"), repo: fields.get("repo"), installation_id: Number(fields.get("installation")),
+        owner: String(fields.get("owner")).trim(), repo: String(fields.get("repo")).trim(), installation_id: Number(fields.get("installation")),
         workflow_run_id: Number(fields.get("run")),
       });
+      setStartedId(item.id);
+      void history.refetch();
       router.push("/dashboard/ai/investigations/" + item.id);
-    } catch (failure) { setError(failure); } finally { setPending(false); }
+    } catch (failure) { submitting.current = false; setError(failure); } finally { setPending(false); }
   }
   return <div className="ai-page">
     <Heading title="AI investigations" description="Local diagnosis, verified evidence and saved investigation history." />
     <section className="card">
       <h2>Local model</h2>
-      {provider.isPending ? <Loading /> : provider.isError ? <ErrorState error={provider.error} retry={() => void provider.refetch()} /> :
-        <><p>Selected model: {provider.data?.selected_model}</p><p role="status">{provider.data?.message}</p></>}
-      <p>Inference runs through the backend on your local machine. Start the dedicated worker before requesting a diagnosis.</p>
-      <button type="button" className="button secondary" onClick={() => void provider.refetch()}>Check local model</button>
+      {provider.isFetching || provider.isPending ? (
+        <p role="status" aria-live="polite">Checking local model...</p>
+      ) : provider.isError ? (
+        <ErrorState error={provider.error} retry={() => { setModelChecked(true); void provider.refetch(); }} />
+      ) : (
+        <>
+          <p>Selected model: {provider.data?.selected_model}</p>
+          <p role="status" aria-live="polite">
+            {modelChecked && "Check complete: "}
+            {provider.data?.available && provider.data.model_available
+              ? "Local model ready."
+              : provider.data?.available
+                ? "Ollama is running, but the selected model is not installed."
+                : "Ollama is unavailable."}
+          </p>
+          <p>{provider.data?.message}</p>
+        </>
+      )}
+      <p>This checks Ollama and the selected model through the authenticated backend. It does not check or start the investigation worker. Start the worker separately to process investigations.</p>
+      <button type="button" className="button secondary" disabled={provider.isFetching || provider.isPending}
+        onClick={() => { setModelChecked(true); void provider.refetch(); }}>
+        {provider.isFetching ? "Checking local model..." : "Check local model"}
+      </button>
     </section>
     <section className="card">
       <h2>Start investigation</h2>
       <p>Prefer <Link href="/dashboard/cicd">an authorized run in CI/CD monitoring</Link>, or enter its exact identifiers below. Access is checked by the backend.</p>
-      <form onSubmit={event => void start(event)}>
+      <form onSubmit={event => void start(event)}
+        onInvalid={event => { const field = event.target as HTMLInputElement; setValidationError("Check " + (field.labels?.[0]?.textContent || "the required fields") + ": " + field.validationMessage); }}>
         <div className="github-toolbar">
           <label>Repository owner<input name="owner" required maxLength={39} /></label>
           <label>Repository name<input name="repo" required maxLength={100} /></label>
-          <label>Installation ID<input name="installation" type="number" min="1" required /></label>
-          <label>Workflow run ID<input name="run" type="number" min="1" required /></label>
+          <label>Installation ID<input name="installation" type="number" min="1" max={Number.MAX_SAFE_INTEGER} step="1" required /></label>
+          <label>Workflow run ID<input name="run" type="number" min="1" max={Number.MAX_SAFE_INTEGER} step="1" required /></label>
         </div>
-        <button type="submit" className="button primary" disabled={pending}>{pending ? "Starting investigation..." : "Start investigation"}</button>
+        <button type="submit" className="button primary" disabled={pending || startedId !== null}>{pending ? "Starting investigation..." : "Start investigation"}</button>
+        <p role="status" aria-live="polite" aria-atomic="true">{pending ? "Starting investigation..." : startedId ? "Investigation ready. Opening report..." : ""}</p>
+        {startedId && <Link href={"/dashboard/ai/investigations/" + startedId}>Open investigation report</Link>}
+        {validationError && <p role="alert">{validationError}</p>}
         <p>Successful runs receive a verified summary without invoking the model. Provider failures are saved with retry controls.</p>
-        {error !== null && <p role="alert">{apiErrorMessage(error)}</p>}
+        {error !== null && <div role="alert"><p>{apiErrorMessage(error)}</p><p>Check the identifiers and <Link href="/dashboard/github">review your GitHub connection</Link>, then submit again. If the request timed out, check recent investigations before trying again.</p></div>}
       </form>
     </section>
     <section className="card">
@@ -104,6 +134,19 @@ function Report({ id }: { id: string }) {
   const query = useAI("/api/v1/ai/investigations/" + id, investigationSchema, true);
   const [pending, setPending] = useState(false); const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshNotice, setRefreshNotice] = useState("");
+  const [refreshError, setRefreshError] = useState<unknown>(null);
+  async function refresh() {
+    if (refreshing || query.isFetching) return;
+    setRefreshing(true); setRefreshNotice(""); setRefreshError(null);
+    try {
+      const result = await query.refetch();
+      if (result.isError) throw result.error;
+      setRefreshNotice("Investigation updated");
+    } catch (failure) { setRefreshError(failure); }
+    finally { setRefreshing(false); }
+  }
   async function action(kind: "retry" | "cancel" | "delete") {
     if (pending) return;
     if ((kind === "delete" || kind === "cancel") && !window.confirm(kind === "delete" ? "Delete this saved report and evidence?" : "Cancel this investigation? In-flight local inference may finish before cancellation is observed.")) return;
@@ -123,7 +166,7 @@ function Report({ id }: { id: string }) {
     catch { setNotice("Clipboard unavailable. Select the report text manually."); }
   }
   if (query.isPending) return <Loading />;
-  if (query.isError) return <ErrorState error={query.error} retry={() => void query.refetch()} />;
+  if (query.isError && !query.data) return <ErrorState error={query.error} retry={() => void refresh()} />;
   const item = query.data; if (!item) return null;
   const report = item.report; const active = ["queued", "running"].includes(item.status);
   return <div className="ai-page">
@@ -136,11 +179,19 @@ function Report({ id }: { id: string }) {
       {active && <p>Queued work survives API restarts. Start the worker if progress stops. Polling stops after ten minutes; refresh manually to check later.</p>}
       {item.error_message && <p role="alert">{item.error_message}</p>}
       <div className="github-toolbar">
-        <button className="button secondary" onClick={() => void query.refetch()}>Refresh investigation</button>
+        <button type="button" className="button secondary" disabled={refreshing || query.isFetching}
+          onClick={() => void refresh()}>{refreshing ? "Refreshing investigation..." : "Refresh investigation"}</button>
         {active && <button className="button secondary" disabled={pending} onClick={() => void action("cancel")}>Cancel investigation</button>}
         {item.status === "failed" && item.attempts < item.max_attempts && <button className="button primary" disabled={pending} onClick={() => void action("retry")}>Retry investigation</button>}
         {!active && <button className="button secondary" disabled={pending} onClick={() => void action("delete")}>Delete investigation</button>}
       </div>
+      <p role="status" aria-live="polite" aria-atomic="true">
+        {refreshing ? "Refreshing investigation..." : refreshNotice}
+      </p>
+      {(refreshError !== null || query.isError) && <>
+        <p>Refresh failed. Showing the previously loaded report.</p>
+        <ErrorState error={refreshError ?? query.error} retry={() => void refresh()} />
+      </>}
       {error !== null && <p role="alert">{apiErrorMessage(error)}</p>}
     </section>
     {report && <>
