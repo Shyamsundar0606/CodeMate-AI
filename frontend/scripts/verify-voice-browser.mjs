@@ -1,0 +1,31 @@
+import { chromium, expect as baseExpect } from '@playwright/test';
+import crypto from 'node:crypto';
+import path from 'node:path';
+const expect = baseExpect.configure({ timeout: 15000 });
+const prefix=process.env.E2E_ACCOUNT_PREFIX;
+if(!/^e2e_[a-f0-9]{10}$/.test(prefix||''))throw Error('Provide a fresh guarded E2E_ACCOUNT_PREFIX.');
+(async()=>{
+const browser=await chromium.launch({channel:'msedge',headless:true,args:['--use-fake-ui-for-media-stream','--use-fake-device-for-media-stream','--use-file-for-fake-audio-capture='+path.resolve('../backend/.voice-verification/investigate.wav')]}),context=await browser.newContext(),page=await context.newPage();let errors=0,authorization=null,confirms=0;
+page.on('pageerror',()=>errors++);page.on('request',r=>{if(r.url().includes('/voice/'))authorization=r.headers().authorization||authorization;if(r.url().endsWith('/voice/confirm')&&r.method()==='POST')confirms++;});
+await page.route('http://localhost:8000/**',r=>r.continue({url:r.request().url().replace('localhost:8000','localhost:8001')}));
+const name=prefix+'_voice',password='Test!Aa9'+crypto.randomBytes(18).toString('hex');
+const history=async()=>{const r=await context.request.get('http://localhost:8001/api/v1/ai/investigations',{headers:{Authorization:authorization}});expect(r.status()).toBe(200);return r.json();};
+const send=async text=>{await page.getByRole('textbox').fill(text);await page.getByRole('button',{name:'Send text command',exact:true}).click();await expect(page.getByRole('button',{name:'Send text command',exact:true})).toBeEnabled({timeout:45000});};
+try{
+await page.goto('http://localhost:3000/register');await page.getByLabel('Username',{exact:true}).fill(name);await page.getByLabel('Email address').fill(name+'@example.com');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByLabel('Confirm password',{exact:true}).fill(password);await page.getByRole('button',{name:'Create account',exact:true}).click();await page.waitForURL('**/login');
+await page.getByLabel('Email address').fill(name+'@example.com');await page.getByLabel('Password',{exact:true}).fill(password);await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.waitForURL('**/dashboard');
+await page.route('https://github.com/login/oauth/authorize**',async r=>{const u=new URL(r.request().url()),c=new URL('http://localhost:8001/api/v1/github/callback');c.searchParams.set('state',u.searchParams.get('state'));c.searchParams.set('code','fixture');await r.fulfill({status:302,headers:{location:c.toString()},body:''});});
+await page.goto('http://localhost:3000/dashboard/github');await page.getByRole('button',{name:'Connect GitHub',exact:true}).click();await expect(page.getByRole('heading',{name:'Connected as octocat'})).toBeVisible();
+await page.getByRole('navigation',{name:'Workspace'}).getByRole('link',{name:'Voice Agent',exact:true}).click();await expect(page.getByRole('heading',{name:'Voice Agent',exact:true})).toBeVisible();
+await send('Select repository octocat/secure-demo');await send('Show my latest pipeline');await expect(page.getByText(/GitHub workflow 701.*conclusion failure/)).toBeVisible();
+await page.getByRole('button',{name:'Start recording',exact:true}).click();await expect(page.getByRole('button',{name:'Stop recording',exact:true})).toBeEnabled();await page.waitForTimeout(3500);await page.getByRole('button',{name:'Stop recording',exact:true}).click();await expect(page.getByRole('textbox')).toHaveValue(/analy[sz]e.*failed.*pipeline/i,{timeout:90000});const transcript=await page.getByRole('textbox').inputValue();
+await page.getByRole('button',{name:'Send text command',exact:true}).click();await expect(page.getByRole('dialog',{name:'Confirm investigation'})).toBeVisible();expect((await history()).items).toHaveLength(0);
+await page.getByRole('button',{name:'Cancel confirmation',exact:true}).click();await expect(page.getByRole('dialog')).not.toBeVisible();expect((await history()).items).toHaveLength(0);
+await page.getByRole('button',{name:'Send text command',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('button',{name:'Confirm',exact:true}).dblclick();await expect(page.getByRole('link',{name:'Open investigation report',exact:true})).toBeVisible();expect(confirms).toBe(1);expect((await history()).items).toHaveLength(1);
+const reportRoute=await page.getByRole('link',{name:'Open investigation report'}).getAttribute('href');await send('Show my latest pipeline');
+await page.evaluate(()=>{const Original=window.Audio;window.Audio=function(...args){const element=new Original(...args);window.__voiceAudio=element;return element;};window.Audio.prototype=Original.prototype;});
+await page.getByRole('button',{name:'Generate voice response',exact:true}).click();await expect(page.getByRole('button',{name:'Play',exact:true})).toBeEnabled({timeout:90000});await page.getByRole('button',{name:'Play',exact:true}).click();await expect.poll(()=>page.evaluate(()=>window.__voiceAudio.currentTime),{timeout:10000}).toBeGreaterThan(0);const duration=await page.evaluate(()=>window.__voiceAudio.duration);
+await page.getByRole('button',{name:'Pause',exact:true}).click();expect(await page.evaluate(()=>window.__voiceAudio.paused)).toBe(true);await page.getByRole('button',{name:'Replay',exact:true}).click();await expect.poll(()=>page.evaluate(()=>window.__voiceAudio.currentTime)).toBeGreaterThan(0);await page.getByRole('button',{name:'Stop playback',exact:true}).click();expect(await page.evaluate(()=>window.__voiceAudio.currentTime)).toBe(0);
+await page.reload();await expect(page.getByText(/GitHub workflow 701.*conclusion failure/).last()).toBeVisible();console.log(JSON.stringify({browser:'Microsoft Edge',realLocalModels:true,syntheticMicrophone:true,controlledGitHubFixture:true,transcript,noCreationBeforeConfirm:true,cancellationNoCreation:true,confirmationPostCount:confirms,investigationCount:1,reportRoute,piperPlaybackDuration:duration,playPauseStopReplay:true,historyRestored:true,pageErrors:errors,physicalMicrophoneAndAudibleOutput:'pending'}));
+}finally{await browser.close();}
+})().catch(e=>{console.error('Voice browser verification failed: '+e.message);process.exitCode=1;});

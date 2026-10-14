@@ -911,3 +911,259 @@ to complete backend verification.
 Files changed for this task: `frontend/src/components/ai/diagnostics.tsx`,
 `frontend/src/tests/ai.test.tsx`, and `docs/PROGRESS.md`. The preexisting generated
 `frontend/next-env.d.ts` change was preserved. Git diff whitespace check passed.
+
+
+## 2026-10-14 - Milestone 6 local voice agent
+
+Implementation is ready for review. Physical microphone capture, audible speaker
+output, actual GPU operation, real French speech input and personal live GitHub
+voice verification remain pending. These are not completed checks.
+
+Started from clean main at 5193d57. Created feature/milestone-6-voice-agent while
+preserving test/ai-failure-diagnosis and the existing stash. GitHub workflow files
+were unchanged. No failing workflow was merged, no commit/push/merge or branch/stash
+deletion occurred, no .env was overwritten, and Milestone 7 was not started.
+
+Added /dashboard/voice and its sidebar entry: typed commands, explicit native
+push-to-talk, permission/duration/stop/cancel handling, editable English/French/Auto
+transcripts, grounded replies, validated internal links, saved conversation context,
+explicit investigation confirmation and Piper Play/Pause/Stop/Replay. Starting a
+new request stops prior playback. Expired confirmations return actionable errors
+and can be dismissed. Existing JWT, cookie ownership, origin, session expiry and
+CSRF protections apply to all mutations, including raw binary audio uploads.
+
+Speech uses official Windows wheels: faster-whisper 1.2.1, CTranslate2 4.8.3,
+PyAV 19.0.1, Piper 1.8.0 and ONNX Runtime 1.31.0. CPU int8 is default. Detection and
+initialization failures fall back to CPU. Lazy serialized subprocess workers reuse
+models and terminate on timeout. Audio is bounded by bytes, MIME/container checks,
+duration, decoded samples and upload time. The API does not persist audio. CI does
+not download model weights. No separate FFmpeg or external Piper executable is
+required. User-approved model setup downloaded official Whisper base and
+LJSpeech medium; pinned revisions/hashes, model card and repository README are
+retained under ignored models/. Dataset public-domain status, repository MIT
+metadata and Piper GPL-3.0-or-later obligations are documented separately.
+
+The bounded typed LangGraph uses deterministic known intents and schema-validated
+local Ollama variations. Tools reuse existing authorized GitHub/investigation
+services. No model-generated API paths, IDs, SQL, external URLs or shell commands
+can execute. Ambiguous repository lookup asks for clarification; selecting another
+repository clears previous workflow context. Facts come from GitHub responses or
+owned saved reports; general knowledge is labeled separately. CI logs open through
+the existing secure viewer and are not spoken wholesale.
+
+Additive migration 0004_voice_agent adds VoiceSession, VoiceTurn, VoiceAction and
+VoiceBudget, preserving previous tables/data. Context is owner-scoped with fixed
+expiry, 20-turn retention and opt-in transcript storage. Pending actions hold exact
+targets and short expiry. Voice-only yes cannot execute. Confirm rechecks owner,
+active app session, original GitHub connection and workflow identity/status.
+PostgreSQL session advisory locks survive service commits; replay is rejected and
+existing investigation idempotency prevents duplicate creation. Rate limits are
+durable; model concurrency assumes one API worker. Expired data is removed on the
+owner's next mutation; idle expired records/backups need separate retention.
+Redaction is imperfect, so users should review summaries before sharing/speaking.
+
+### Verification evidence
+
+Final frontend: 136 Vitest tests passed, including all original 110. ESLint passed
+with zero warnings; TypeScript and Next.js 16.4 production build passed. Ruff,
+pip check and Alembic check passed. Earlier complete backend runs passed 235 then
+236 tests; the final run including the repository-switch regression is recorded
+below. Migration regressions preserve users, connections and investigations.
+No existing tests were removed, skipped or weakened for a green result.
+
+Real local smoke: Piper generated 128556 WAV bytes. CPU faster-whisper returned
+"code mate, open my GitHub repositories." Real Qwen2.5-Coder interpreted a natural
+profile-navigation phrase. Python 3.12.10 reported CPU int8/int8_float32/float32
+support. The existing CodeMate PostgreSQL startup helper passed on port 5433.
+
+Real Edge integration used real local models, synthetic microphone input and
+controlled GitHub fixtures. MediaRecorder produced browser audio; Whisper returned
+"Code Mate, analyze the latest failed pipeline." Authorized fixture run 701 was
+reported as failed. No investigation existed before Confirm; Cancel created none.
+A double click sent one confirmation POST and created one investigation, returning
+/dashboard/ai/investigations/00b3af80-910f-4afb-bc9e-45938fd34056.
+Piper audio decoded and advanced playback in Edge (6.757007 seconds). Play, Pause,
+Stop and Replay passed. History restored after reload; JavaScript page errors: zero.
+Desktop/mobile screenshots were visually reviewed and a 390px overflow check passed.
+These results do not establish personal live GitHub or physical audio verification.
+
+A test-only GitHub identity collision was fixed with unique identities per E2E
+prefix. The helper now has a __main__ guard for Windows speech-worker spawning.
+A prolonged execution pause stopped local services; Docker Desktop was restored
+through its installed executable and only CodeMate's PostgreSQL helper was used.
+Disposable accounts, owned servers and owned speech workers were cleaned up.
+No other project's containers, ports or files were changed.
+
+### File manifest
+
+New backend files:
+
+- app/voice/__init__.py, agent.py, errors.py, schemas.py, speech.py
+- app/models/voice.py; app/services/voice_service.py; app/api/routes/voice.py
+- alembic/versions/0004_voice_agent.py
+- scripts/setup_voice_models.py; scripts/verify_voice_local.py
+- tests/test_voice.py
+
+New frontend files:
+
+- src/app/(protected)/dashboard/voice/page.tsx
+- src/components/voice/assistant.tsx; src/lib/voice.ts; src/tests/voice.test.tsx
+- scripts/verify-voice-browser.mjs
+- AGENTS.md, automatically generated by Next.js dev and retained for user review
+
+Modified files:
+
+- .gitignore; README.md
+- backend/.env.example; requirements.txt; requirements-dev.lock.txt
+- backend/app/core/config.py; app/main.py; app/models/__init__.py
+- backend/tests/test_database.py (expected new additive migration head)
+- frontend/scripts/e2e_backend.py; src/app/globals.css
+- frontend/src/components/dashboard/dashboard-shell.tsx
+- frontend/src/lib/api/client.ts; src/lib/auth/session.ts; src/tests/session.test.ts
+- docs/ARCHITECTURE.md; docs/WINDOWS.md; docs/PROGRESS.md
+
+Models, manifests and synthetic audio/screenshots are ignored local artifacts.
+Generated next-env.d.ts was restored to the clean initial baseline. WINDOWS.md
+contains setup/startup/test commands, licensing, troubleshooting and manual checks;
+ARCHITECTURE.md contains API contracts and security/retention bounds.
+
+Final verification: all 239 backend tests passed with warnings treated as errors
+(191 original plus 48 new). All 136 frontend tests passed (110 original plus 26 new).
+Final Ruff, formatting, ESLint, TypeScript, production build, pip check and Alembic
+check passed. Hardware, actual GPU/French speech and personal GitHub checks remain
+pending as listed above. No commits or pushes were made.
+
+Final target-selection review distinguishes explicit latest-failed searches from
+references to the previously identified workflow. A temporary strict-intent-schema
+regression and an incomplete successful-run fixture were corrected; the final full
+run passed all 239 tests. Hosted LangGraph tracing is disabled, matching Milestone 5,
+with a privacy regression. No automated test failures remain.
+A concurrent user-only whitespace edit to frontend/postcss.config.mjs was preserved
+and was not changed by this implementation.
+
+
+## 2026-10-14 - Milestone 6 final Git review and commit preparation
+
+The owner reports real-device verification of microphone transcription, Piper
+speaker playback, personal GitHub workflow lookup, and AI investigation completion.
+These four checks are now recorded as **user-verified** from the commit-preparation
+request. They were not independently repeated by Codex in this review. No new
+transcript, run ID, investigation ID, model/device details, or timing evidence was
+provided, so none is invented. The earlier pending notes describe the implementation
+session and are superseded for these four checks by this update.
+
+Physical-device recording cancellation and live pending-investigation cancellation
+were not explicitly confirmed by the owner and remain pending. Automated frontend
+and backend cancellation regressions and the previous controlled Edge cancellation
+check passed. Cancelling before upload discards the recording. Cancelling during
+transcription aborts the browser request and ignores its result; audio may already
+have reached the backend, and active inference may continue until completion or
+its configured timeout. The current UI cancellation notice does not distinguish
+those stages, a known wording limitation rather than proof of server cancellation.
+Actual GPU acceleration and real French speech recognition remain unverified.
+
+Reviewed tracked modifications and untracked Milestone 6 files. Migration
+0004_voice_agent upgrades from 0003 by creating only four voice tables and their
+indexes/foreign keys; it does not rewrite or drop prior tables. Alembic check
+reported no pending schema operations. GitHub repository/workflow/log operations
+remain GET-only, with existing installation permission validation rejecting
+non-read permissions. OAuth token operations retain their existing behavior.
+Voice-only yes cannot create an investigation: stored pending actions and the
+explicit confirmation endpoint enforce owner/session/CSRF checks, original
+connection and workflow revalidation, expiry, replay rejection and idempotency.
+
+Secret review scanned 194 tracked/untracked text files before this documentation
+update. No matches for actual local secret values or high-confidence credential
+patterns were detected; no values were printed. A tracked-path audit found no
+private .env/key files, model weights, audio recordings, logs or caches. Expected
+public test credentials and example placeholders are not production secrets.
+Existing ignore rules cover local environments, speech weights, verification
+artifacts, dependency/build caches and logs. No sensitive artifacts are in the
+proposed allowlist.
+
+frontend/postcss.config.mjs is the concurrent user whitespace/newline edit and is
+preserved unchanged, excluded from staging. frontend/next-env.d.ts contains only
+Next.js-generated development route type imports; it is preserved and excluded.
+frontend/AGENTS.md matches the installed Next.js automatic agent-rules generator,
+which runs during next dev when a coding agent is detected. It contains generic
+tooling guidance, not Milestone 6 application behavior. Recommend excluding it
+from this milestone commit and considering it separately; leave the file intact.
+It may be regenerated on later development starts. No .gitignore changes were
+made to hide it, and no file was deleted or reset.
+
+No implementation files were changed during this final review. Current review
+checks: Ruff lint and formatting passed (87 files); Alembic and pip checks passed.
+Frontend checks and final whitespace/index verification are recorded below when
+complete. The full 239-backend/136-frontend implementation results remain distinct
+from review checks. No staged paths existed when this review began. No staging,
+commit, push, merge, reset, stash/branch deletion or Milestone 7 work was performed.
+
+### Exact proposed staging allowlist (35 files)
+
+Only these individual paths are proposed. Do not use git add . or git add -A.
+The allowlist includes this updated progress file and excludes the three files
+listed above. No staging command has been executed.
+
+```text
+.gitignore
+README.md
+backend/.env.example
+backend/alembic/versions/0004_voice_agent.py
+backend/app/api/routes/voice.py
+backend/app/core/config.py
+backend/app/main.py
+backend/app/models/__init__.py
+backend/app/models/voice.py
+backend/app/services/voice_service.py
+backend/app/voice/__init__.py
+backend/app/voice/agent.py
+backend/app/voice/errors.py
+backend/app/voice/schemas.py
+backend/app/voice/speech.py
+backend/requirements-dev.lock.txt
+backend/requirements.txt
+backend/scripts/setup_voice_models.py
+backend/scripts/verify_voice_local.py
+backend/tests/test_database.py
+backend/tests/test_voice.py
+docs/ARCHITECTURE.md
+docs/PROGRESS.md
+docs/WINDOWS.md
+frontend/scripts/e2e_backend.py
+frontend/scripts/verify-voice-browser.mjs
+frontend/src/app/(protected)/dashboard/voice/page.tsx
+frontend/src/app/globals.css
+frontend/src/components/dashboard/dashboard-shell.tsx
+frontend/src/components/voice/assistant.tsx
+frontend/src/lib/api/client.ts
+frontend/src/lib/auth/session.ts
+frontend/src/lib/voice.ts
+frontend/src/tests/session.test.ts
+frontend/src/tests/voice.test.tsx
+```
+
+### Proposed commit message
+
+```text
+feat: add fully local voice agent for Milestone 6
+
+Add local Whisper transcription, Piper speech and a bounded LangGraph agent.
+Reuse authorized read-only GitHub tools with expiring explicit investigation
+confirmation, replay protection and owner-scoped PostgreSQL conversation state.
+Add the dashboard voice interface, additive migration, tests and Windows setup.
+Document user-verified real-device/live GitHub results and remaining checks.
+```
+
+Remaining operational limits: bounded repository/run lookup pages, one API worker
+for practical model memory/concurrency, idle expired metadata cleanup on the next
+owner mutation, imperfect redaction, and applicable Piper/model distribution
+license notices. No new deployment or GitHub write capability is introduced.
+
+Final review verification: frontend unit suite rerun passed all 136 tests; ESLint
+with zero warnings and TypeScript passed. Ruff lint/format (87 files), Alembic
+check and pip check passed. No implementation files changed, so backend Pytest
+and the production build were not repeated during this documentation-only review;
+their last complete implementation results were 239 passed and a successful build.
+Git diff whitespace check passed, the index is empty, and the exact 35-file
+allowlist excludes PostCSS, next-env.d.ts, AGENTS.md and all private artifacts.
+Nothing was staged. Committing still requires the owner's approval.

@@ -14,3 +14,7 @@ cryptography>=46,<50
 
 # Bounded local diagnostic graph; no hosted provider.
 langgraph==1.2.14
+
+# Official local speech runtimes, models are configured separately.
+faster-whisper==1.2.1
+piper-tts==1.8.0

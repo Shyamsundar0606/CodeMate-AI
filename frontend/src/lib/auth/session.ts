@@ -103,7 +103,7 @@ export class SessionManager {
       return false;
     }
   }
-  async post<T>(path: "/api/v1/auth/github/connect" | "/api/v1/auth/github/disconnect" | `/api/v1/auth/ai/${string}`, schema: z.ZodType<T> | undefined, body?: unknown): Promise<T> {
+  async post<T>(path: "/api/v1/auth/github/connect" | "/api/v1/auth/github/disconnect" | `/api/v1/auth/ai/${string}` | `/api/v1/auth/voice/${string}`, schema: z.ZodType<T> | undefined, body?: unknown): Promise<T> {
     const generation = this.generation;
     const current = () => {
       if (generation !== this.generation || !this.access) throw new ApiError("The session changed. Please sign in again.", 401);
@@ -126,6 +126,27 @@ export class SessionManager {
       throw error;
     }
   }
+  async uploadAudio(body: Blob, language: "en" | "fr" | "auto", schema: z.ZodType<{ text: string; language: string }>, signal?: AbortSignal) {
+    const generation = this.generation;
+    const current = () => { if (generation !== this.generation || !this.access) throw new ApiError("The session changed. Please sign in again.", 401); };
+    try {
+      current();
+      if (Date.now() >= this.expiresAt - 5000) await this.refresh();
+      return await this.lock(async () => {
+        current();
+        const { csrf_token } = await bootstrapCsrf(this.api);
+        current();
+        const result = await this.api.request(`/api/v1/auth/voice/transcribe?language=${language}`, { method: "POST", body, signal, headers: { Authorization: `Bearer ${this.access}`, "X-CodeMate-Request": "1", "X-CSRF-Token": csrf_token, "Content-Type": body.type } }, schema);
+        current(); return result;
+      });
+    } catch (error) {
+      if (generation === this.generation && error instanceof ApiError && error.status === 401) {
+        this.generation++; this.clear("anonymous", null, "Your session has expired. Please sign in again.");
+      }
+      throw error;
+    }
+  }
+
   // Only idempotent authenticated GETs get one refresh and one retry.
   async get<T>(path: string, schema: z.ZodType<T>, signal?: AbortSignal): Promise<T> {
     const generation = this.generation;

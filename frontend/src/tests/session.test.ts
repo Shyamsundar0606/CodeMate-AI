@@ -162,3 +162,23 @@ it("sends AI input with bearer, custom header, cookie CSRF and no automatic muta
  await expect(session.post("/api/v1/auth/ai/investigations", undefined, body)).rejects.toMatchObject({ code: "AI_USER_BUSY" });
  expect(calls("/ai/investigations")).toHaveLength(2);
 });
+
+it("uploads raw audio with the existing session and CSRF headers without JSON conversion", async () => {
+  const session = create(); await session.login(credentials);
+  fetchMock.mockImplementation(url => String(url).includes("/voice/transcribe") ? Promise.resolve(response({ text: "Open profile", language: "en" })) : standard(url));
+  const audio = new Blob(["audio"], { type: "audio/webm;codecs=opus" });
+  const result = await session.uploadAudio(audio, "en", z.object({ text: z.string(), language: z.string() }));
+  expect(result.text).toBe("Open profile");
+  const options = fetchMock.mock.calls.find(([url]) => String(url).includes("/voice/transcribe"))![1]!;
+  expect(options.body).toBe(audio);
+  expect(new Headers(options.headers).get("Content-Type")).toBe(audio.type);
+  expect(new Headers(options.headers).get("X-CSRF-Token")).toBe(csrf);
+  expect(new Headers(options.headers).get("Authorization")).toBe(`Bearer ${tokens.access_token}`);
+});
+it("clears an expired session after a failed audio mutation without retrying", async () => {
+  const session = create(); await session.login(credentials);
+  fetchMock.mockImplementation(url => String(url).includes("/voice/transcribe") ? Promise.resolve(response({}, 401)) : standard(url));
+  await expect(session.uploadAudio(new Blob(["audio"], { type: "audio/webm" }), "en", z.object({ text: z.string(), language: z.string() }))).rejects.toMatchObject({ status: 401 });
+  expect(session.getSnapshot().status).toBe("anonymous");
+  expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/voice/transcribe"))).toHaveLength(1);
+});
