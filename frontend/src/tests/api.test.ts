@@ -22,3 +22,8 @@ it("aborts timed-out requests and never retries", async () => {
  await expect(new ApiClient("http://localhost:8000", 10).request("/slow")).rejects.toMatchObject({ kind: "timeout" }); expect(fetcher).toHaveBeenCalledTimes(1);
 });
 it.each(["https://user:secret@localhost", "javascript:alert(1)", "https://localhost?token=secret"])("rejects unsafe API base %s", url => expect(() => new ApiClient(url)).toThrow());
+
+it.each([[422, "AUTOMATION_POLICY", "Model citations do not match the retrieved source evidence."], [429, "AUTOMATION_RATE_LIMIT", "Wait one minute before another automation request."]])("preserves safe automation errors (%s)", async (status, code, message) => {
+ vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ detail: { code, message } }, status)));
+ await expect(new ApiClient().request("/api/v1/auth/automation/sessions/test/proposals")).rejects.toMatchObject({ status, code, message });
+});

@@ -519,3 +519,115 @@ prefix from the project root:
 ```powershell
 .\backend\.venv\Scripts\python.exe frontend/scripts/e2e_backend.py cleanup e2e_637af28490
 ```
+
+
+## Milestone 7: proposal and approval workflow
+
+No new Python/npm packages or downloaded models are needed. Keep PostgreSQL on
+5433. Start only the existing CodeMate service; leave VoxHire resources untouched.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infrastructure\start-postgres.ps1
+Set-Location backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+# Expected head: 0005_safe_automation
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+# Only if the existing local model is absent, install explicitly:
+# ollama pull qwen2.5-coder:3b
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+In another PowerShell window, start the existing worker only if AI investigations
+are needed. Proposal generation is synchronous and does not require that worker.
+Speech models remain configured using the Milestone 6 commands above.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe -m app.ai.worker
+# Separate window:
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+npm.cmd ci
+npm.cmd run dev
+```
+
+Open http://localhost:3000/dashboard/automation, sign in and connect GitHub using
+the existing App. Select the authorized installation/repository and enter exact
+source paths. Optional workflow ID pins the source to that run's commit and adds
+bounded evidence. Inspect source, then request an explanation or patch. Review the
+diff and risks before selecting Review approval. The confirmation dialog records
+review only. Reject or Cancel does not apply anything. No tests run from this page.
+
+If GitHub rejects access, reconnect or select an installed repository. If a tree
+is truncated or too large, select a smaller repository; do not bypass limits.
+Secret, binary, executable, missing and oversized files are deliberately rejected.
+If Ollama is unavailable or returns an invalid suggestion, fix readiness or revise
+the request and retry. No unsafe fallback or hosted API is used. If a mutation
+returns 409, wait for an active request or prepare a fresh proposal after expiry.
+Do not add a Docker socket or host directory mounts to make execution available.
+The isolated runner is deferred; application and validation remain disabled.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe -m pytest -q -W error
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+Set-Location ..\frontend
+npm.cmd test
+npm.cmd run lint -- --max-warnings=0
+npm.cmd run typecheck
+npm.cmd run build
+# After backend tests finish, with ports 3000 and 8001 free:
+node scripts/verify-automation-browser.mjs
+```
+
+The separate browser fixture uses the dedicated guarded test DB, a disposable
+account, actual Edge/FastAPI/production Next.js, and controlled GitHub/Ollama
+upstreams. It does not access personal sessions or prove real-model fix quality.
+It cleans only its own account/server processes. Do not run it concurrently with
+Pytest because both use the exclusive test database. Screenshots go to ignored
+test-results. Existing Actions workflow scripts and credential isolation remain
+unchanged. Tests never download models or run proposed repository code on Windows.
+
+
+### Final Milestone 7 verification notes
+
+Use the existing codemate-postgres container on 127.0.0.1:5433. Check Docker
+Desktop readiness and port ownership before starting services; do not stop other
+projects. Keep http://localhost:3000 as the configured browser origin. The backend
+binds to 127.0.0.1:8000. The existing investigation worker can be started with
+`.\.venv\Scripts\python.exe -u scripts\ai_worker.py` from backend.
+
+On this verification run the default .next cache failed in the Turbopack CSS
+worker. Production compilation passed using the existing isolated directory
+option, without changing PostCSS or deleting the original generated files:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+$env:CODEMATE_E2E = '1'
+npm.cmd run build
+# Run only after backend tests finish, with ports 3000 and 8001 free:
+node scripts/verify-automation-browser.mjs
+Remove-Item Env:CODEMATE_E2E
+```
+
+Next.js may update next-env.d.ts to reference the selected output directory;
+preserve any pre-existing generated-file edit and exclude it from milestone
+staging. No cache deletion or PostCSS change is required for the isolated check.
+A missing-file error in Vitest worker temporary transforms was resolved by running
+outside the restricted tool sandbox. Do not weaken application security settings.
+
+Missing multi-file citations reject the suggestion without saving it. Narrow the
+request or inspect fewer files; do not add arbitrary citations. After a network
+timeout, Reload session before retrying. Unchanged UI retries reuse a request ID.
+The same local model can still make inaccurate claims despite valid citations.
+See [the final verification report](MILESTONE_7_FINAL_VERIFICATION.md).
+
+
+Milestone 7 blocker follow-up: ordinary `npm.cmd run build` now succeeds using
+.next. next.config.ts disables only persistent Turbopack production-cache reuse;
+no cache deletion or PostCSS edit is required. Development caching and the
+CODEMATE_E2E output option are unchanged. The prior isolated-build workaround
+above is historical. Preserve existing generated files during verification.

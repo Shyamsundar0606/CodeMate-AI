@@ -1167,3 +1167,334 @@ their last complete implementation results were 239 passed and a successful buil
 Git diff whitespace check passed, the index is empty, and the exact 35-file
 allowlist excludes PostCSS, next-env.d.ts, AGENTS.md and all private artifacts.
 Nothing was staged. Committing still requires the owner's approval.
+
+
+## Milestone 7: secure developer automation review delivery (2026-10-17)
+
+### Repository audit and implementation scope
+
+Verified clean local main and remote refs/heads/main at
+302f3f4d96796c66f63f4a97dc12f94f990603c4 before editing. Created
+feature/milestone-7-safe-automation from that commit. Both existing stashes were
+preserved. No commit, push, merge, reset, branch deletion or stash operation was
+performed. PostCSS configuration, next-env.d.ts and existing user/generated files
+were not changed for this milestone. Existing GitHub Actions workflows and all
+Python/npm dependency files are unchanged.
+
+Implemented the explicitly permitted proposal-first scope. The system can inspect
+authorized source, explain code, retrieve bounded real CI metadata/log evidence,
+generate and validate small proposals, show exact diffs, and persist explicit
+review decisions. A verified execution sandbox is unavailable, so patch
+application and command execution are hard-disabled. No host checkout/workspace
+is created; no repository code is executed on the Windows host. This is not a
+completed isolated runner or autonomous code-repair service.
+
+### Features and architecture
+
+- Authenticated /dashboard/automation with installation/repository selection,
+  exact selected source paths, optional workflow ID, pinned snapshot context,
+  explanation/patch requests, evidence citations, changed-file list, unified diff,
+  risks, confidence and expiry. Native confirmation dialog supports keyboard
+  interaction, loading feedback, visible errors, review approval, rejection and
+  cancellation. Text mode does not require a microphone.
+- Reuses GitHubRepositoryService installation membership and user authorization,
+  existing local Ollama settings/client, bounded LangGraph, JWT refresh/CSRF and
+  owner advisory locks. GitHub access remains read-only. Generated text has no
+  command, tool, filesystem or execution authority.
+- Backend-generated diffs use typed full-file replacements only for inspected
+  existing regular text blobs. Git blob integrity, exact commit SHA, SHA-256 base
+  hashes, size/type/path restrictions, case collision checks and exact citation
+  matches are enforced. No raw LLM patches are applied. Secret-like content is
+  rejected/redacted; detection cannot guarantee all private data is recognized.
+- UUID request idempotency for snapshots and successful proposal retries;
+  concurrent duplicate review decisions serialize and replay fails. Review binds
+  owner, workspace, original GitHub connection, repository, revision, complete
+  patch-content hash, validation template IDs and expiry. Voice-only approval is
+  insufficient. New voice phrases navigate to the automation review page only.
+- Six mutations/minute/user, ten unexpired snapshots/user, five proposals/session,
+  four source files, 12 KB/file, 24 KB source total and a bounded 5,000-entry Git
+  tree. One local generation slot and a 90-second Ollama deadline. No paid service,
+  new dependency or automatic model download was introduced.
+
+### Database changes and retention
+
+Additive 0005_safe_automation follows 0004_voice_agent and creates only
+four new tables: automation_sessions (logical snapshot workspace/context),
+automation_proposals (typed proposal and exact review record), automation_audit
+(event types/timestamps) and automation_budgets (owner mutation quota). New
+foreign keys, indexes, unique request IDs and proposal-state constraint support
+isolation and replay protection. Existing milestone tables are not rewritten.
+
+Snapshots/associated evidence expire after 24 hours; proposal review expires
+after 30 minutes. Approval metadata records at most a five-minute review grant,
+not reusable execution authorization. The owner's next mutation removes expired
+sessions and their cascading metadata; idle expired rows/backups can persist
+until maintenance/backup expiry. Private source and small redacted log excerpts
+are stored only as needed for review. No GitHub tokens, model credentials, raw
+audio, execution output or invented test results are stored by this feature.
+The development database was not migrated during verification. Apply the new
+head with the documented Windows startup command before running the new backend.
+
+### Automated verification performed
+
+- Backend full suite: **304 passed** with warnings treated as errors, including
+  the previous 239 tests and 65 new automation cases. Final command:
+  .venv/Scripts/python.exe -m pytest -q -W error (from backend).
+- Ruff lint passed; Ruff format check passed for 95 backend Python files.
+  The separate optional browser fixture also passed Ruff and formatting checks.
+- Alembic current on the guarded test database: 0005_safe_automation (head).
+  Alembic check: no new upgrade operations. Full regression suite verified
+  downgrade/upgrade consistency and preservation of existing user/session and
+  investigation records. No development downgrade or destructive migration ran.
+- Frontend: **145 passed**, including all previous 136 tests and nine new
+  automation regressions. ESLint passed with zero warnings, TypeScript passed,
+  and the production Next.js 16.4.0 build passed including /dashboard/automation.
+- pip check: no broken requirements. Existing CI-compatible commands were used;
+  a remote GitHub Actions run was not triggered because nothing was pushed.
+- Initial development checks exposed an ESLint account-reset effect issue and
+  migration metadata drift while the request-ID schema was changing. The account
+  boundary now remounts the workbench by owner. The final full backend suite ran
+  against a stable schema and passed. No tests were disabled or weakened.
+- Secret review scanned 208 tracked/new source candidates against high-confidence
+  patterns and actual local secret values in memory: no credential matches.
+  Credential/model/audio/log/cache artifacts remain ignored; examples contain
+  disposable public test settings only. No files were staged.
+
+Security regressions cover unauthenticated/CSRF/origin denial, cross-user and
+unauthorized repository access, path traversal/absolute/drive/ADS/reserved/sensitive
+paths, symlink/submodule/executable Git entries, tree truncation/case collisions,
+blob integrity/size, raw-hunk/command injection, exact base/hash binding, grounded
+citations, prompt-injection text without tool authority, expiry/replay/concurrent
+review, persisted-state tampering, network-retry duplicates, CRLF/no-final-newline
+handling and database failure without approval. Execution-denial cases cover
+network/host/resource/shell/restart/cancellation requests. These prove denial,
+not actual sandbox isolation properties.
+
+### Real local verification and remaining manual checks
+
+Real Microsoft Edge with the actual production frontend and FastAPI, a disposable
+account and guarded test DB verified source inspection, exact diff preview,
+rejection, explicit review approval, persisted history after reload, secret-path
+rejection and voice navigation. GitHub and Ollama upstreams were controlled test
+fixtures in that browser flow; it did not use a personal browser or credentials.
+The browser observed zero JavaScript errors and zero execution requests.
+Desktop and 390px mobile screenshots were inspected; the mobile title layout
+was corrected and the final browser rerun confirmed no horizontal overflow.
+
+Separately, real local qwen2.5-coder:3b produced a schema-valid, exact-source-cited
+explanation of backend/app/api/health.py from committed main 302f3f4 with zero
+changes. It also produced a validated one-file patch for a controlled addition
+example with one grounded citation. Neither smoke applied a patch or ran tests.
+This does not establish repair correctness for arbitrary real CI failures.
+
+Physical microphone/Piper playback were historical Milestone 6 checks, not
+repeated here. Existing voice regressions passed and the new typed voice command
+was verified in Edge. A personal GitHub end-to-end repair proposal, real failed-CI
+fix quality, GPU/French speech and physical cancellation remain unverified in
+this milestone. Browser tests use synthetic upstreams and deterministic evidence.
+
+Patch application, actual validation exit codes/output, execution cancellation,
+resource exhaustion controls, no-network/host isolation and real Windows
+junction/reparse-point containment remain deferred. No filesystem is materialized
+by the proposal-only API. A future narrow developer runner must verify those
+properties and require fresh execution approval before enabling code execution.
+In-flight synchronous model generation has a timeout but cannot be recalled by
+leaving the page. Source selection is explicit; automatic whole-repository code
+indexing is not implemented. Large repositories and unsupported paths fail closed.
+
+### Windows startup and review
+
+See docs/WINDOWS.md, Milestone 7 section, for CodeMate-only PostgreSQL startup on
+5433, additive Alembic upgrade/check, existing Ollama readiness, backend/worker/
+frontend startup and all verification commands. Optional browser command after a
+production build: node scripts/verify-automation-browser.mjs from frontend, with
+ports 3000/8001 free and no concurrent Pytest. It cleans only its own disposable
+account and child processes. No existing personal browser is accessed.
+
+### Exact Milestone 7 changed files (uncommitted)
+
+```
+README.md
+backend/alembic/versions/0005_safe_automation.py
+backend/app/api/routes/automation.py
+backend/app/automation/__init__.py
+backend/app/automation/graph.py
+backend/app/automation/policy.py
+backend/app/automation/schemas.py
+backend/app/main.py
+backend/app/models/__init__.py
+backend/app/models/automation.py
+backend/app/services/automation_service.py
+backend/app/voice/agent.py
+backend/app/voice/schemas.py
+backend/tests/test_automation.py
+backend/tests/test_database.py
+docs/ARCHITECTURE.md
+docs/PROGRESS.md
+docs/WINDOWS.md
+frontend/scripts/automation_fixture.py
+frontend/scripts/verify-automation-browser.mjs
+frontend/src/app/(protected)/dashboard/automation/page.tsx
+frontend/src/app/globals.css
+frontend/src/components/automation/workbench.tsx
+frontend/src/components/dashboard/dashboard-shell.tsx
+frontend/src/lib/api/client.ts
+frontend/src/lib/auth/session.ts
+frontend/src/lib/automation.ts
+frontend/src/lib/voice.ts
+frontend/src/tests/automation.test.tsx
+```
+
+No commit or push is authorized by this implementation request. Review the
+proposal-only delivery and documented limitations before any publication.
+
+
+### Milestone 7 citation contract review ? 2026-10-18
+
+The previous model schema accepted free-form `source` and `quote` strings. The
+LangGraph validator then required the model's path to equal a retrieved source
+key and its quote to be an exact substring. It supplied no enumerated evidence
+IDs or source-line ranges, leaving the model to reproduce identifiers and text.
+Invalid output was not saved, and the audit deliberately retained only a generic
+failure category. The original rejected citation cannot be recovered safely from
+those records. A bounded reproduction with the exact developer request supplied
+by the user passed under the old contract (two known full paths and exact quotes);
+therefore the precise original offending value and whether it was a path or quote
+mismatch remain unconfirmed. Do not describe that nondeterministic failure as a
+reproduced file-path, line-range, or schema-reference error.
+
+The new contract provides a deterministic, bounded catalog of exact pinned source
+and CI excerpts, each with an evidence ID, source key and literal line range.
+Ollama's structured schema enumerates only IDs from that snapshot. The model
+selects IDs; the backend supplies the original path, quote and range. Unknown IDs,
+model-authored paths, missing/duplicate references and incorrect supplied ranges
+are rejected without remapping to other evidence. JSON whitespace and a single
+anchored JSON Markdown fence are supported without repairing citation data.
+Oversized catalogs fail closed instead of silently truncating source evidence.
+Errors use AUTOMATION_CITATION_INVALID with safe retry guidance and no raw output.
+There are no automatic model retries. The existing 90-second deadline, generation
+budgets, authorization, source/credential scanning, audit logging and proposal-only
+execution policy remain in place. Earlier persisted source/quote citations still
+load; no migration or rewrite of stored proposals was performed.
+
+Verification for this change:
+
+- Full backend Pytest: 374 passed with warnings as errors. The automation subset
+  passed 135 tests. New cases cover valid IDs, invented IDs, incorrect paths,
+  missing/duplicate citations, invalid/typed line ranges, pretty/fenced JSON,
+  exact CRLF/long-line excerpts, bounded catalogs and persisted GET restoration.
+  Existing ownership, CSRF, credential, protected-path and disabled-execution
+  security regressions passed.
+- Full frontend unit suite: 155 passed, including ID/range display, Reload session
+  without another POST, and legacy persisted citation compatibility.
+- Backend Ruff lint and formatting passed (97 files); the updated optional browser
+  fixture separately passed Ruff lint and formatting. Its path-dependent helper
+  import was moved inside main so importing the fixture is lint-clean.
+- ESLint with zero warnings and TypeScript verification passed.
+- Next.js 16.4.0 production build passed in a disposable frontend copy without
+  environment files. The active development server and concurrent next-env.d.ts
+  edit were preserved.
+- Real qwen2.5-coder:3b completed the exact supplied request in about 21 seconds
+  through the authenticated FastAPI proposal API. The two source files came from
+  the existing authorized pinned snapshot, read in a development-DB read-only
+  transaction. Test account authorization/GitHub upstreams used controlled
+  fixtures; real Ollama and guarded PostgreSQL test storage were used. HTTP 200,
+  explained status, exact excerpt/range checks, database persistence, identical
+  Reload-session GET, and an idempotent repeat with only one model call passed.
+  Only the disposable account was removed afterward; personal snapshots and
+  proposal data were not changed.
+
+Limits: the real model selected eight valid excerpts from config.py, despite the
+prompt's preference for one to three, and did not select main.py evidence. Its
+explanation mentioned create_app and Settings. Exact provenance checks establish
+where quoted evidence came from; they do not establish semantic support for every
+statement in generated prose. The UI continues to label the suggestion unverified.
+This check must not be reported as proof of complete citation coverage or factual
+correctness of the generated explanation. No personal authenticated browser retest
+or new real GitHub fetch was performed in this follow-up. To retest manually, inspect
+the two files, select Explain source, paste the exact supplied developer request,
+generate once, inspect the displayed sources/IDs/ranges, then click Reload session
+and confirm the same saved explanation. Invalid references should display the safe
+error and save no proposal. Patch application and test execution remain disabled.
+
+Files changed in this follow-up (relative to its starting working tree):
+
+- backend/app/automation/citations.py (new)
+- backend/app/automation/graph.py
+- backend/app/automation/schemas.py
+- backend/tests/test_automation.py
+- frontend/scripts/automation_fixture.py
+- frontend/src/components/automation/workbench.tsx
+- frontend/src/lib/automation.ts
+- frontend/src/tests/automation.test.tsx
+- docs/PROGRESS.md
+
+Unrelated user changes were preserved. No commit, staging, push, merge, reset or
+stash operation was performed.
+
+
+## Milestone 7 final completion review, 2026-10-18
+
+Final follow-up implemented per-file citation coverage, backend risk-hypothesis
+labeling, a MEDIUM confidence ceiling, preserved review statuses after proposal
+expiry and additional safe voice phrases. Existing implementation and stashes
+were preserved. No execution capability or Milestone 8 work was added.
+
+Verification: full backend 379 passed with warnings as errors; final automation
+subset 140 passed; frontend 156 passed; Ruff, ESLint, TypeScript, pip check and
+Alembic current/head/schema checks passed. Production build passed with the
+existing CODEMATE_E2E isolated output option. The default .next output still
+fails in the Turbopack CSS worker and was preserved. npm production audit reports
+zero findings; the same five high development-tooling findings remain.
+
+Actual Edge/FastAPI/PostgreSQL browser checks passed for explanation reload,
+diffs, approval/rejection/cancellation persistence, history, safe navigation and
+secret-path rejection. Screenshots were inspected on desktop and 390px mobile;
+no page errors, horizontal overflow or execution requests occurred. Extended
+coverage respects the existing six-mutation/minute limit by waiting for reset.
+
+Real GitHub installation membership and both requested blobs passed integrity and
+source-scanning checks at commit 302f3f4d96796c66f63f4a97dc12f94f990603c4.
+This used a read-only transaction, not a new personal browser snapshot. Real
+Qwen produced a valid one-line arithmetic patch in 40.84s. The exact two-file
+explanation failed closed on missing main.py evidence (85.06s); after prompt
+refinement it timed out (90.03s). No failed suggestion was saved. A successful
+real two-file explanation and personal browser acceptance remain outstanding;
+Milestone 7 is not declared fully finalized. Semantic correctness remains a
+human-review responsibility even when evidence provenance passes.
+
+See [the full final verification report](MILESTONE_7_FINAL_VERIFICATION.md) for
+exact commands, migration status, security findings, limits, the complete staging
+allowlist and remaining merge steps. Nothing was staged, committed or pushed.
+
+
+## Milestone 7 remaining blockers resolved, 2026-10-18
+
+Real two-file explanations now use bounded, file-local Qwen selection of
+source-derived observations, preserving the original evidence IDs. No model
+prose is synthesized into multi-file results. Backend rendering uses Python AST
+facts within exact quoted source or explicitly extractive source prefixes;
+request-focused selection avoids unrelated subjects when matching facts exist.
+At most four calls, 192 output tokens per call, 35 seconds per call and 90 seconds
+total are allowed, without retries. No partial proposal is saved on failure.
+Single-file explanation and patch-generation behavior is preserved.
+
+The exact two-file request passed against the saved real-source snapshot at
+302f3f4d96796c66f63f4a97dc12f94f990603c4. Real local Qwen inference through the
+JWT/CSRF-protected API completed in 1.42s with two calls and citations from both
+files. PostgreSQL stored one proposal. GET Reload session and an unchanged
+request-ID retry restored the identical proposal without further model calls.
+The disposable API test used controlled GitHub authorization responses serving
+the exact previously verified blobs; no personal login or snapshot was modified.
+
+Default npm.cmd run build now passes with persistent production Turbopack-cache
+reuse disabled. No manual generated-output removal or PostCSS edit was needed;
+development caching and output-directory selection are preserved.
+
+Final full backend suite: 394 passed in 181.67s with warnings as errors. Frontend:
+158 passed; Ruff lint/format, ESLint, TypeScript, Alembic check and ordinary
+production build passed. Both targeted blockers are closed; ready for commit
+review. Existing stashes and generated-file edits remain. Nothing staged,
+committed, pushed, merged or reset; execution remains disabled and Milestone 8
+was not started. See MILESTONE_7_FINAL_VERIFICATION.md for exact commands,
+limitations, current readiness and the updated staging allowlist.

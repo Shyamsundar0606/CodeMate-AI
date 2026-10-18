@@ -7,7 +7,7 @@ export const transcriptionSchema = z.object({ text: z.string(), language: z.stri
 export type VoiceReply = z.infer<typeof replySchema>;
 export function safeVoiceRoute(route: string | null) {
   if (!route) return null;
-  const staticRoutes = ["/dashboard", "/dashboard/github", "/dashboard/repositories", "/dashboard/cicd", "/dashboard/ai", "/dashboard/profile", "/dashboard/settings"];
+  const staticRoutes = ["/dashboard/automation", "/dashboard", "/dashboard/github", "/dashboard/repositories", "/dashboard/cicd", "/dashboard/ai", "/dashboard/profile", "/dashboard/settings"];
   if (staticRoutes.includes(route)) return route;
   if (/^\/dashboard\/ai\/investigations\/[0-9a-f-]{36}$/.test(route)) return route;
   try {
