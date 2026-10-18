@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 ROUTES = {
+    "automation": "/dashboard/automation",
     "dashboard": "/dashboard",
     "repositories": "/dashboard/repositories",
     "cicd": "/dashboard/cicd",
@@ -43,7 +44,10 @@ class Intent(Strict):
     )
     intent: IntentName
     destination: (
-        Literal["dashboard", "repositories", "cicd", "ai", "profile", "settings", "github"] | None
+        Literal[
+            "dashboard", "repositories", "cicd", "ai", "profile", "settings", "github", "automation"
+        ]
+        | None
     ) = None
     repository: str | None = Field(default=None, max_length=140)
 

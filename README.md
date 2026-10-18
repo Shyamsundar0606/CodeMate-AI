@@ -307,3 +307,34 @@ push-to-talk uses local faster-whisper and optional speech uses Piper. Investiga
 creation requires an explicit confirmation button. See [Windows setup](docs/WINDOWS.md)
 and [voice API/security architecture](docs/ARCHITECTURE.md) for model setup, licensing,
 privacy, resource limits and the manual hardware verification checklist.
+
+
+## Milestone 7: secure developer automation previews
+
+Open `/dashboard/automation` to inspect up to four authorized source files at a
+pinned GitHub commit, request a local Ollama explanation or small patch proposal,
+review the backend-generated unified diff, and explicitly approve, reject or
+cancel the proposal. The existing Voice Agent can route "propose a fix" and
+"open developer automation" to this review page. Text input works independently.
+
+**Patch application and test execution are disabled.** No verified disposable
+execution sandbox or privileged runner has been established. Review approval is
+stored and audited; it does not modify files, run tests, create commits, push code,
+open pull requests or deploy. A future executor must require fresh execution
+approval. GitHub App permissions remain read-only.
+
+Source snapshots, bounded redacted CI evidence, proposals and review decisions
+are owner-scoped PostgreSQL metadata with expiry. No repository code is checked
+out or executed on the Windows host. No new dependencies, paid APIs or model
+weights are required. Existing Ollama settings and qwen2.5-coder:3b are reused.
+Apply additive migration `0005_safe_automation` before starting the backend.
+See docs/ARCHITECTURE.md and docs/WINDOWS.md for limits and verification commands.
+
+
+Milestone 7 final verification is recorded in
+[the final verification report](docs/MILESTONE_7_FINAL_VERIFICATION.md).
+Explanations explicitly naming inspected files require citations for each named
+file. Exact excerpts establish provenance only. Generated interpretations remain
+unverified, all risk statements are hypotheses, and HIGH model confidence is
+capped at MEDIUM. Review decisions remain visible after proposal expiry while
+the parent session remains available. Execution remains disabled.

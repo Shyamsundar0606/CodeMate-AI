@@ -103,7 +103,7 @@ export class SessionManager {
       return false;
     }
   }
-  async post<T>(path: "/api/v1/auth/github/connect" | "/api/v1/auth/github/disconnect" | `/api/v1/auth/ai/${string}` | `/api/v1/auth/voice/${string}`, schema: z.ZodType<T> | undefined, body?: unknown): Promise<T> {
+  async post<T>(path: "/api/v1/auth/github/connect" | "/api/v1/auth/github/disconnect" | `/api/v1/auth/ai/${string}` | `/api/v1/auth/voice/${string}` | `/api/v1/auth/automation/${string}`,  schema: z.ZodType<T> | undefined, body?: unknown): Promise<T> {
     const generation = this.generation;
     const current = () => {
       if (generation !== this.generation || !this.access) throw new ApiError("The session changed. Please sign in again.", 401);

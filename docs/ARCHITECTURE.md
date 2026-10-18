@@ -394,3 +394,145 @@ Hosted LangGraph tracing is explicitly disabled for voice, matching the existing
 local investigation graph. Intent state distinguishes previous-workflow references
 from explicit latest-failed searches; failure searches also validate conclusions
 from returned GitHub data. Repository changes discard older workflow references.
+
+
+## Milestone 7: bounded developer automation and review
+
+The automation page reuses the authenticated client, GitHub installation picker,
+repository service, local Ollama adapter and existing dark dashboard shell.
+All mutations require JWT, active refresh-cookie ownership, CSRF and origin/custom
+header checks. Reads require JWT. Snapshot detail, generation and review recheck
+repository authorization and the original GitHub connection. History lists only
+the current owner's unexpired session metadata. Responses use no-store.
+
+### Proposal-only workspace boundary
+
+The first delivery deliberately uses a logical snapshot workspace in PostgreSQL,
+identified by a generated UUID, not a host checkout. It does not materialize files,
+follow symlinks or junctions, mount directories, invoke subprocesses or expose a
+Docker socket. A filesystem workspace root, canonical/reparse-point checks and
+runner service are deferred with patch application and execution. The web API
+cannot enable execution through an environment switch. `/execute` always returns
+503 and records a denial. No execution results are invented or persisted.
+
+GitHubRepositoryService proves installation membership before read-only Git Data
+requests. A selected completed or in-progress run supplies its exact commit SHA;
+without a run, the default branch is resolved once to an exact SHA. The commit
+pins a Git tree. Trees must be untruncated and contain at most 5,000 entries.
+Only explicitly selected existing regular non-executable `100644` blobs are read.
+Symlinks (`120000`), submodules, executables, missing files and case-colliding paths
+are rejected. Every ancestor must be a Git tree, not a link. Blob Git SHA-1 and
+reported length are verified; proposal before/after hashes use SHA-256.
+
+Paths are a deliberately restrictive ASCII subset: relative paths only, no drive
+prefixes, backslashes, alternate data streams, empty/dot/parent segments, Windows
+reserved names, trailing dots/spaces or sensitive/generated components. Secret
+and credential-related filenames are rejected. Supported text extensions are
+py, ts, tsx, js, mjs, json, yaml, yml, toml, md and txt. At most four files,
+12 KB/file and 24 KB total are inspected. Binary/invalid UTF-8/control-character
+content is rejected. CRLF source hashes are preserved; generated LF replacements
+inherit a source file's CRLF convention. Raw LLM diff hunks are never accepted.
+
+Optional CI evidence uses existing authorized run/job/log retrieval, timeout and
+redirect protections. Up to ten job metadata entries are fetched; the first two
+jobs can contribute metadata and at most 2,000 characters of failed-job redacted
+logs each. Logs may be unavailable. The UI distinguishes source-only sessions.
+Known secret patterns and actual GitHub credentials are redacted or rejected
+before persistence/model use. Pattern detection is imperfect: private source
+can contain unforeseen sensitive information. Select source files deliberately.
+
+### Bounded graph and review authority
+
+A separate LangGraph calls local Ollama once and then validates structured output.
+There are no model tools, command dispatch, autonomous retries or background
+repair workers. A 90-second provider deadline, existing response limit, recursion
+limit four and one in-process generation slot bound the graph. Source, logs and
+user text are explicitly untrusted data. Model-suggested evidence quotes must
+match retrieved source/evidence keys. This checks observations, not correctness
+of the proposed repair. The UI labels explanations and improvements unverified.
+Strict Pydantic models reject extra fields, invented validation commands and raw
+patches. Only distinct selected existing files can change; before hashes must
+match. The backend creates the unified diff from bounded typed replacements.
+The complete stored proposal is hashed with owner, workspace, repository,
+connection and base commit. No Markdown or HTML from the model is executed.
+
+A real dialog click records a review decision bound to those fields, allowed
+validation target IDs and expiry. Voice phrases only navigate to the review page.
+They cannot approve or apply anything. Expired, already-decided, altered or replayed
+proposals fail. A dedicated per-user PostgreSQL advisory lock survives upstream
+service commits and prevents concurrent double decisions. Persisted request UUIDs
+and unique constraints deduplicate snapshot creation and successful proposal
+retries; a reused UUID with a different request is rejected. Restarting the API
+cannot execute a stored approval because no executor exists.
+
+The backend enumerates python_syntax, python_tests, typescript and eslint command
+**templates for review only**. They are never launched. A future runner must use a
+separate narrow interface, disposable non-root container, no network or host keys,
+no application secrets, no Docker socket in the web process, approved mounts and
+verified CPU/memory/PID/time/output limits. Existing project scripts are untrusted
+inside such a runner, even when the executable is allowlisted. Network isolation,
+host isolation, cancellation of execution and resource exhaustion have not been
+verified here. Fail-closed API tests are not sandbox verification.
+
+### Persistence, quotas and API
+
+Additive migration `0005_safe_automation` follows `0004_voice_agent` and creates
+`automation_sessions`, `automation_proposals`, `automation_audit` and
+`automation_budgets`. Foreign keys cascade only within new automation metadata
+when an owner/connection is removed. Existing tables are not rewritten.
+Sessions retain bounded private source snapshots and evidence for 24 hours;
+proposals accept review for 30 minutes. Approval metadata additionally records a
+maximum five-minute review grant, never reusable as execution authority. Six
+mutations/minute/user, ten active snapshots/user and five proposals/session bound
+storage and inference. Expired sessions are deleted on the owner's next mutation;
+idle expired rows and external backups may remain until maintenance/backup expiry.
+Reads enforce expiry even before cleanup. Audit events contain types/timestamps,
+not raw secrets, arbitrary command output or full CI logs. The UI shows the latest
+50 events for each session. Existing request logs cover denied API requests.
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | /api/v1/automation/capabilities | Hard-disabled execution and review templates |
+| GET | /api/v1/automation/sessions | Owner-only recent snapshot metadata |
+| GET | /api/v1/automation/sessions/{id} | Reauthorized context, diffs and audit history |
+| POST | /api/v1/auth/automation/sessions | Idempotent source snapshot creation |
+| POST | /api/v1/auth/automation/sessions/{id}/proposals | Structured explanation or validated patch suggestion |
+| POST | /api/v1/auth/automation/sessions/{id}/proposals/{proposal}/decision | Exact review approval, rejection or cancellation |
+| POST | /api/v1/auth/automation/sessions/{id}/execute | Always 503, audited execution denial |
+
+Preparing and approving a proposal does not change the selected branch or commit.
+Changing the desired revision or source selection requires a new snapshot and
+review. Repeat Generate with the same unchanged request to retrieve its successful
+proposal; edit the request to deliberately ask for another. A cancelled pending
+proposal cannot be approved later. In-flight synchronous generation has a timeout
+but no server cancellation endpoint; leaving the page ignores its browser result
+and does not guarantee cancelling a model request already sent.
+
+
+### Milestone 7 final grounding and review history
+
+The graph includes a backend-owned required-source-to-evidence-ID map for files
+explicitly named in an explanation request. Validation rejects missing coverage
+without saving a suggestion. Patch proposals require source evidence for every
+changed file. These deterministic checks do not prove semantic relevance or the
+truth of model prose; independent source review remains necessary. The backend
+labels every generated risk an unverified hypothesis and caps HIGH confidence at
+MEDIUM. The viewer also labels legacy risk statements as unverified hypotheses.
+No repository-specific framework conclusions are hardcoded.
+
+Proposal expiry closes pending review. Already approved, rejected, cancelled and
+explained records retain their status until parent-session retention expires.
+Ownership, exact content-hash binding, single-use decisions and disabled execution
+are unchanged. No schema change was needed beyond existing 0005_safe_automation.
+See [final verification](MILESTONE_7_FINAL_VERIFICATION.md) for current results and
+limits, including the distinction between real upstream checks and fixture E2E.
+
+
+Multi-file explanation follow-up: the graph now scopes one compact local Ollama
+selection call per inspected file. Backend Python AST observations or explicit
+extractive prefixes are tied to original citation IDs and exact quoted lines.
+The model can select relevant observations but cannot add prose to the combined
+summary. Missing/wrong-file IDs fail without saving a partial result. Calls are
+bounded to four, 192 generated tokens each, 35 seconds each and 90 seconds total,
+with no automatic retry or second synthesis. Single-file and patch paths remain
+unchanged. See MILESTONE_7_FINAL_VERIFICATION.md for live persistence results.

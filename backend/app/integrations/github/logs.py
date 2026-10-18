@@ -6,7 +6,9 @@ WARNING = (
 )
 
 
-def redact_logs(raw: bytes, truncated: bool, secrets: list[str]) -> tuple[str, bool, bool]:
+def redact_logs(
+    raw: bytes, truncated: bool, secrets: list[str], *, assignment_values: bool = True
+) -> tuple[str, bool, bool]:
     text = raw.decode("utf-8", errors="replace")
     if truncated:
         text = text.rsplit("\n", 1)[0] if "\n" in text else ""
@@ -24,9 +26,12 @@ def redact_logs(raw: bytes, truncated: bool, secrets: list[str]) -> tuple[str, b
     ]
     for pattern in patterns:
         text = re.sub(pattern, "[REDACTED]", text)
-    text = re.sub(
-        r"(?i)((?:password|secret|token|api[_-]?key)\s*[=:]\s*)[^\s]+", r"\1[REDACTED]", text
-    )
+    if assignment_values:
+        text = re.sub(
+            r"(?i)((?:password|secret|token|api[_-]?key)\s*[=:]\s*)[^\s]+",
+            r"\1[REDACTED]",
+            text,
+        )
     text = re.sub(r"(?i)(authorization:\s*(?:bearer|basic)\s+)[^\s]+", r"\1[REDACTED]", text)
     lines = text.splitlines()
     if len(lines) > 4000:

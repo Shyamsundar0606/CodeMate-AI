@@ -17,6 +17,8 @@ from app.api.health import router as health_router
 from app.api.routes.ai import mutations as ai_mutations
 from app.api.routes.ai import router as ai_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.automation import mutations as automation_mutations
+from app.api.routes.automation import router as automation_router
 from app.api.routes.github import mutations as github_mutations
 from app.api.routes.github import router as github_router
 from app.api.routes.users import router as users_router
@@ -59,6 +61,7 @@ def create_app(
             engine.dispose()
 
     application = FastAPI(title=config.app_name, version="0.1.0", lifespan=lifespan)
+    application.state.automation_gate = BoundedSemaphore(1)
     application.state.voice_gate = BoundedSemaphore(config.voice_max_concurrent_requests)
     application.state.voice_speech = voice_speech
     application.state.github_client = github_client
@@ -123,7 +126,7 @@ def create_app(
                 revision = connection.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar()
-            if revision != "0004_voice_agent":
+            if revision != "0005_safe_automation":
                 return JSONResponse(status_code=503, content={"status": "unavailable"})
         except SQLAlchemyError:
             return JSONResponse(status_code=503, content={"status": "unavailable"})
@@ -136,6 +139,8 @@ def create_app(
     application.include_router(github_mutations)
     application.include_router(ai_router)
     application.include_router(ai_mutations)
+    application.include_router(automation_router)
+    application.include_router(automation_mutations)
     application.include_router(voice_router)
     application.include_router(voice_mutations)
     return application

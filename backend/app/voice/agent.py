@@ -41,6 +41,19 @@ def known(text):
         )
     ):
         return Intent(intent="unsupported")
+    if any(
+        v in text
+        for v in (
+            "developer automation",
+            "propose a fix",
+            "prepare a fix",
+            "suggested patch",
+            "show the patch",
+            "proposed patch",
+            "explain this repository",
+        )
+    ):
+        return Intent(intent="navigate", destination="automation")
     if text in {"yes", "confirm", "yes analyze it", "yes, analyze it"}:
         return Intent(intent="confirm")
     if text in {"cancel", "no", "never mind"}:
