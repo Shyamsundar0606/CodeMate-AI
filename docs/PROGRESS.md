@@ -1498,3 +1498,225 @@ review. Existing stashes and generated-file edits remain. Nothing staged,
 committed, pushed, merged or reset; execution remains disabled and Milestone 8
 was not started. See MILESTONE_7_FINAL_VERIFICATION.md for exact commands,
 limitations, current readiness and the updated staging allowlist.
+
+## Milestone 8 safe preparation fallback, 2026-10-19
+
+Implemented on feature/milestone-8-secure-sandbox from clean main 8e6aff4. Added
+owner-scoped PostgreSQL execution previews and audits, an additive migration,
+immutable binding of repository/installation/commit/proposal/diff/hash/profile/
+limits/expiry, current GitHub authorization, separate denied execution confirmation,
+idempotency, cancellation and dashboard restoration. The initial inert validation
+profile supports Python syntax preparation only. Safe voice phrases navigate to
+Developer Automation and cannot authorize execution. FastAPI has no Docker launcher,
+physical workspace materializer or repository-code executor.
+
+Docker Desktop initially had no Linux-engine pipe. After starting the installed
+Desktop service, Linux Engine 29.6.2 reported built-in seccomp and cgroup namespaces;
+existing codemate-postgres was healthy. Read-only container/image inventory left
+unrelated projects untouched. Engine availability and existing image digests do not
+verify worker isolation or image provenance. Execution remains hard-disabled with
+no environment override. No real patch application, validation, output, timeout,
+network/host isolation, process/memory exhaustion, cleanup or worker recovery has
+been demonstrated. The preparation-only fallback is the delivery scope permitted
+by the Milestone 8 requirements. Milestone 9 has not started.
+
+Final backend: 448 passed in 202.29 seconds with warnings as errors, preserving all
+394 prior tests and adding 54 cases. This includes 24 PostgreSQL/API tests and 30
+independent security/voice cases. Ruff lint/format passed for 109 Python files;
+pip check passed. The new Alembic revision 0006_sandbox_previews follows 0005 with
+no revision branch. Development database upgraded additively to 0006 with no schema
+drift. Guarded test database migration roundtrip and metadata checks passed.
+
+Frontend: 167 tests passed, including all 158 previous tests. ESLint with zero
+warnings, TypeScript and ordinary Next.js production build passed. npm production
+audit: zero findings. Full audit: five existing high development-tooling findings;
+no dependency/lockfile change or unsafe forced upgrade was made. Tool-sandbox
+worker/temp/process restrictions required elevated test/build reruns. A concurrency
+test was corrected for the existing VOICE_BUSY contract; no previous tests were
+weakened. Browser testing exposed a parent-loading/history race, fixed by disabling
+sandbox actions while the source snapshot is loading and adding a regression.
+
+The full threat model, trust boundaries, API/schema contracts, security gate,
+Windows setup, actual verification, known limitations and exact staging allowlist
+are in [Milestone 8 verification](MILESTONE_8_VERIFICATION.md). No file was staged,
+committed, pushed or merged. All three original stashes remain untouched. No branch,
+stash or container was deleted; no reset/clean or environment rewrite was used.
+Remote CI was not triggered because no push was authorized. Existing physical
+voice/model/GitHub integration results remain historical and were not repeated.
+
+Final live preparation check: the extended Microsoft Edge production/FastAPI/
+PostgreSQL flow passed using controlled GitHub/Ollama upstreams and a disposable
+account. Exact sandbox preview, disabled separate Run, cancellation and restored
+history passed, alongside M7 source/review/voice behavior. Zero execution requests,
+zero page errors and no horizontal overflow at 390px. Desktop/mobile screenshots
+were inspected. This verifies preparation behavior, not sandbox execution.
+
+### Suggestion-mode follow-up, 2026-10-19
+
+A personal browser screenshot showed the generic proposal-mode mismatch error.
+The screenshot did not reveal the selected suggestion type or the original model
+payload, so the exact original mismatch direction is unconfirmed. Inspection found
+that single-file explanation and patch generation shared a schema permitting both
+empty and nonempty changes. The generation contract now specifies zero changes
+for explain mode and one to four for patch mode. Independent backend mode checks
+remain in place, without coercing, dropping or retrying invalid output. Errors now
+explicitly explain when to select Explain source or request a specific patch.
+
+Four new database-independent tests cover both structured-generation contracts
+and rejection/guidance for noncompliant output. All 34 independent security/mode
+cases and 155 automation/explanation regressions passed with warnings as errors.
+Targeted Ruff lint/format passed. The exact requested create_app explanation passed
+against real local Ollama using committed main.py source in 13.94 seconds: zero
+changes and eight validated citations. No proposal was persisted by that smoke
+check. This does not prove semantic correctness of all model claims or reproduce
+the unknown original payload. The local API was restarted and readiness passed.
+
+Follow-up source files: backend/app/automation/graph.py and
+backend/security_tests/test_automation_modes.py, plus this progress record and the
+Milestone 8 verification addendum. Execution remains disabled. No full-suite rerun
+or new frontend build was necessary for this backend-only follow-up; the previous
+448/167 results remain historical verification of the Milestone 8 implementation.
+
+### Empty-file proposal protection, 2026-10-19
+
+A subsequent browser screenshot showed a saved patch proposal whose diff would
+clear all 149 lines of main.py, despite explanation prose saying no improvement
+was needed. The separate Source explanation was valid and contained no changes.
+Execution remained disabled and the displayed proposal had awaiting_approval status;
+no evidence indicates it was applied. The previous mode-specific changes-count
+constraint prevented empty change arrays but did not reject empty replacement text.
+
+The generated replacement schema now requires at least one non-whitespace character,
+and the authoritative patch policy rejects empty/whitespace-only replacements even
+when a model ignores structured decoding. Review approval now regenerates and checks
+patch artifacts against current policy. Previously saved file-clearing proposals
+therefore cannot be approved; explicit rejection remains available. Sandbox preview
+preparation already reuses that patch policy. Existing personal proposal records
+were not altered or rejected on the user's behalf.
+
+Three new independent cases verify empty and whitespace rejection despite model
+schema noncompliance. A real PostgreSQL/API fixture reconstructs a legacy saved
+file-clearing proposal with a valid hash, proves approval rejection and confirms
+explicit rejection still works. Results: 37 independent security/mode cases and
+180 automation/explanation/sandbox regressions passed with warnings as errors;
+Ruff lint and formatting passed for 110 files. The chat-owned API was restarted
+and database readiness passed. No patch was applied or execution enabled. These
+checks address empty-file replacement, not semantic correctness of arbitrary
+nonempty AI edits. Human review remains required.
+
+### Exact-path and complete-source patch generation, 2026-10-19
+
+The user's docstring-request screenshot showed a rejection for uninspected or
+duplicate target paths. The original model payload was not recorded, so the exact
+bad path/duplicate direction is unconfirmed. Inspection found unconstrained model
+path strings and hash strings. Patch generation also supplied hashes and excerpts
+rather than the complete source required to reconstruct a full-file replacement.
+
+Structured generation now enumerates the exact inspected paths and source hashes,
+limits the change count to the inspected file count (maximum four), supplies bounded
+complete pinned source for patch mode, and explicitly requires one complete result
+per changed path while preserving unrelated code. Backend exact-path, duplicate,
+base hash, citation, secret and empty-file checks remain authoritative; no paths
+are remapped and no invalid output is repaired. Explanation prompt source handling
+is unchanged. The same validated snapshot source is sent only to the local model.
+
+Four added independent tests verify exact path/hash/source contracts and rejection
+when a model ignores enums or duplicate limits. All 41 independent security/mode
+cases and 180 automation/explanation/sandbox tests passed with warnings as errors.
+Ruff lint/format passed for 110 files. Real local Ollama processed the exact user
+request against committed main.py at the pinned main revision in 58.88 seconds.
+It returned one validated backend/app/main.py replacement, 160 lines from 149.
+Removing its newly added create_app docstring produced an identical Python AST,
+confirming imports and executable code preservation for this result. The smoke
+saved no proposal and applied no patch. It does not guarantee every future model
+response or runtime behavior. The API was restarted and database readiness passed.
+
+### Syntax failure and constrained documentation proposals, 2026-10-19
+
+A later screenshot showed a Python syntax rejection after generation. That error
+was previously combined with credential-removal guidance. Syntax failures now have
+AUTOMATION_PYTHON_SYNTAX_INVALID and explicitly state that the syntax error does
+not establish a credential problem. The original rejected replacement was not
+retained, so its exact syntax fault remains unconfirmed.
+
+Larger files now use exact anchored edits (over 4,000 UTF-8 bytes) rather than
+requiring the model to reconstruct the entire file. Anchors must match one unique
+nonempty excerpt; exact path/base hashes and duplicate restrictions remain enforced.
+Original snippets are enumerated from unique backend citation excerpts. There is
+no fuzzy matching, remapping or automatic retry. Model-independent tests verify
+complete preservation outside the selected excerpt. However, two initial real
+anchored runs failed structured validation in 77.62/80.34 seconds. A subsequent
+sanitized diagnostic identified an oversized replacement (string_too_long) in
+45.73 seconds. Generic large-file model edit quality remains limited; these failed
+runs were rejected, saved no proposal and were not counted as successful repairs.
+
+For explicit add-docstring requests, a smaller supported operation avoids asking
+the model to emit code. Backend AST inspection issues function IDs for up to 32
+undocumented top-level multiline Python functions. The model returns one function
+ID and up to 300 characters of documentation text. Backend-controlled quoting
+inserts one string-literal line, preserves every other byte including CRLF, and
+removes the inserted docstring from a comparison AST to verify that executable
+syntax is unchanged. Unknown IDs, existing/inline unsupported targets, invalid
+text and any AST mismatch fail closed. This is a declared documentation operation,
+not silent repair of an invalid model patch. Other patches retain their supported
+full-file/small-file or anchored protocol. No repository code is executed.
+
+Both independent real local Ollama checks of the user's exact create_app docstring
+request passed: 9.33s and 7.70s, one changed file, 149 -> 150 lines, identical
+executable AST after removing the inserted docstring. Each docstring was 300
+characters. No proposal was saved and no patch applied by those checks.
+
+Verification: an interim full backend run passed 470 tests in 281.88 seconds with
+warnings as errors before the final documentation operation was added. The final
+240-case automation/explanation/sandbox/security suite then passed in 69.86 seconds,
+including 58 independent security/mode/documentation tests and two new authenticated
+API persistence/review/preview cases. Those tests exercise safe quoting, CRLF,
+unchanged source/AST, target rejection and the ordinary persisted proposal contract.
+Ruff lint/format passed for 115 files. This is not a claim that a later full 479-case
+run was executed. Frontend source and environment files did not change in this
+follow-up. The chat-owned API was restarted, readiness passed, and execution remains
+disabled. User proposal records were not edited, approved or rejected on their behalf.
+
+Additional source review files: backend/app/automation/edits.py,
+backend/app/automation/docstrings.py, backend/security_tests/test_targeted_edits.py,
+backend/security_tests/test_docstrings.py and backend/tests/test_automation_targeted.py.
+
+### Exact docstring comparison correction, 2026-10-19
+
+The repeated 'Docstring insertion did not match the requested text' failure was
+caused by comparing model text to ast.get_docstring with its default clean=True.
+That helper normalizes indentation and blank lines; the safely inserted AST string
+could therefore be correct while the comparison failed. This was a backend bug.
+The check now uses clean=False to compare the exact inserted value. It does not
+strip, normalize, remap or repair model text, and the executable-AST invariant is
+unchanged. Sixteen regression cases cover whitespace, multiline text, tabs, Unicode,
+quotes, backslashes and LF/CRLF. Before the fix, 12 of these cases reproduced the
+same error; afterward all 74 independent security/documentation cases passed.
+The authenticated API persistence test also covers whitespace-sensitive text.
+
+Added tests/local_docstring.py as a separate, explicitly opt-in verification. It is
+outside normal test_*.py discovery and requires CODEMATE_REAL_OLLAMA_DOCSTRING_TEST=1.
+It uses the existing guarded test database, actual local Ollama and a controlled
+GitHub fixture serving the exact committed backend/app/main.py content/path. The
+first harness attempt generated successfully but stopped on an incorrect fixture
+path assertion; the fixture was corrected to use the dashboard's nested path.
+The final real API test passed in 9.44 seconds (7.19 seconds for the application
+flow). Importantly, the real response was whitespace-sensitive, so the old
+comparison would have rejected it. Generation returned 200; saved GET/reload and
+an unchanged request-ID retry restored identical content with only one model call.
+Controlled review approval and execution preview creation/readback passed, with
+executable AST unchanged and execution_enabled/applied false. No personal account,
+GitHub data or developer proposal was modified. No code patch was applied.
+
+The chat-owned API was restarted with the fix and readiness was verified. No
+frontend source or environment changes were needed. Real repair correctness for
+other operations remains limited as documented above. Add backend/tests/local_docstring.py
+to the cumulative source review allowlist. Ordinary CI still needs no local model.
+
+Final regression verification after the exact-value correction: **496 passed** in
+195.33 seconds with warnings as errors. Ruff lint passed; formatting passed for
+116 Python files. The separate opt-in real Ollama/API check passed in addition to
+the ordinary suite and is not included in the 496 count. These supersede earlier
+partial/backend counts for current source verification. Frontend files were not
+changed by this correction. Existing gate/ownership/CSRF/source/citation/approval
+and preview regressions remain passing. No tests were weakened or disabled.

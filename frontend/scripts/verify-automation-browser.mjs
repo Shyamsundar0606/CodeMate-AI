@@ -23,7 +23,7 @@ try {
   const web = start(process.execPath, [resolve(root, "node_modules/next/dist/bin/next"), "start", "--hostname", "127.0.0.1", "--port", "3000"]); await ready("http://127.0.0.1:3000", web);
   browser = await chromium.launch({ channel: "msedge", headless: true });
   const context = await browser.newContext(); page = await context.newPage(); let errors = 0, executions = 0;
-  page.on("pageerror", () => errors++); page.on("request", r => { if (r.url().endsWith("/execute")) executions++; });
+  page.on("pageerror", () => errors++); page.on("request", r => { if (r.url().endsWith("/execute") || r.url().endsWith("/confirm")) executions++; });
   await page.route("http://localhost:8000/**", route => route.continue({ url: route.request().url().replace("localhost:8000", "localhost:8001") }));
   const name = prefix + "_user", password = "Test!Aa9" + randomBytes(18).toString("hex");
   await page.goto("http://localhost:3000/register"); await page.getByLabel("Username", { exact: true }).fill(name); await page.getByLabel("Email address").fill(name + "@example.com"); await page.getByLabel("Password", { exact: true }).fill(password); await page.getByLabel("Confirm password", { exact: true }).fill(password); await page.getByRole("button", { name: "Create account", exact: true }).click(); await page.waitForURL("**/login");
@@ -39,6 +39,13 @@ try {
   await page.getByLabel("Developer request").fill("Fix addition"); await page.getByRole("button", { name: "Generate suggestion", exact: true }).click(); await expect(page.getByLabel("Proposed unified diff")).toContainText("+    return a + b");
   await page.getByRole("button", { name: "Reject proposal", exact: true }).click(); await expect(page.getByText("rejected", { exact: true })).toBeVisible();
   await page.getByLabel("Developer request").fill("Propose addition after review"); await page.getByRole("button", { name: "Generate suggestion", exact: true }).click(); await page.getByRole("button", { name: "Review approval", exact: true }).click(); await expect(page.getByRole("dialog")).toBeVisible(); await page.getByRole("checkbox", { name: "python_tests" }).check(); await page.getByRole("button", { name: "Confirm review approval", exact: true }).dblclick(); await expect(page.getByText("approved", { exact: true })).toBeVisible(); await expect(page.getByRole("button", { name: "Apply patch and run validation (unavailable)", exact: true }).first()).toBeDisabled();
+  await page.getByRole("button", { name: "Prepare execution preview", exact: true }).dblclick();
+  await expect(page.getByRole("heading", { name: "Exact execution preview", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Execution preview diff")).toContainText("+    return a + b");
+  await expect(page.getByRole("button", { name: "Run in isolated sandbox (execution disabled)", exact: true })).toBeDisabled();
+  await expect(page.getByText("Patch not applied. Validation not executed. No exit code or test output exists.", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Cancel execution preview", exact: true }).click();
+  await expect(page.getByText("State: cancelled", { exact: true })).toBeVisible();
   // Respect the production six-mutation/minute budget when adding cancellation coverage.
   await new Promise(done => setTimeout(done, 61000));
   await page.getByLabel("Developer request").fill("Prepare a cancellable addition proposal"); await page.getByRole("button", { name: "Generate suggestion", exact: true }).click(); await page.getByRole("button", { name: "Cancel proposal", exact: true }).click(); await expect(page.getByText("cancelled", { exact: true })).toBeVisible();
@@ -47,10 +54,18 @@ try {
   await page.getByLabel("Source paths").fill(".env"); await page.getByRole("button", { name: "Inspect source", exact: true }).click(); await expect(page.getByRole("alert")).toBeVisible();
   await page.goto("http://localhost:3000/dashboard/voice"); await page.getByRole("textbox").fill("CodeMate, propose a fix"); await page.getByRole("button", { name: "Send text command", exact: true }).click(); await expect(page.getByRole("link", { name: "Open relevant page" })).toHaveAttribute("href", "/dashboard/automation");
   await page.getByRole("link", { name: "Open relevant page" }).click(); await page.getByRole("button", { name: "octocat/secure-demo / aaaaaaaa" }).click();
-  await mkdir(resolve(root, "test-results"), { recursive: true }); await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: resolve(root, "test-results/automation-desktop.png"), fullPage: true });
+  await expect(page.getByText("approved", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /octocat\/secure-demo \/ cancelled \/ / }).click();
+  await expect(page.getByText("State: cancelled", { exact: true })).toBeVisible();
+  await mkdir(resolve(root, "test-results"), { recursive: true });
+  await page.getByRole("region", { name: "Sandbox execution preparation" }).screenshot({ path: resolve(root, "test-results/sandbox-desktop.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("region", { name: "Sandbox execution preparation" }).screenshot({ path: resolve(root, "test-results/sandbox-mobile.png") });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: resolve(root, "test-results/automation-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 }); await page.getByRole("heading", { name: "Developer Automation", exact: true }).click(); await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: resolve(root, "test-results/automation-mobile.png"), fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth); expect(overflow).toBe(false); expect(errors).toBe(0); expect(executions).toBe(0);
-  console.log(JSON.stringify({ browser: "Microsoft Edge", realFrontendAndFastAPI: true, disposableTestDatabase: true, upstreamGitHubAndOllama: "controlled fixtures", sourceInspection: true, diffPreview: true, rejection: true, reviewApproval: true, persistedHistory: true, secretPathRejected: true, voiceNavigation: true, executionRequests: executions, mobileOverflow: overflow, pageErrors: errors }));
+  console.log(JSON.stringify({ browser: "Microsoft Edge", realFrontendAndFastAPI: true, disposableTestDatabase: true, upstreamGitHubAndOllama: "controlled fixtures", sandboxPreview: true, separateRunDisabled: true, cancelledPreviewRestored: true, sourceInspection: true, diffPreview: true, rejection: true, reviewApproval: true, persistedHistory: true, secretPathRejected: true, voiceNavigation: true, executionRequests: executions, mobileOverflow: overflow, pageErrors: errors }));
 } catch (error) {
   if (page?.url().includes("/dashboard/automation")) { await mkdir(resolve(root, "test-results"), { recursive: true }); await page.screenshot({ path: resolve(root, "test-results/automation-failure.png"), fullPage: true }); console.error("Automation fixture visible text:", (await page.locator("main").innerText()).slice(0, 1800)); }
   throw error;

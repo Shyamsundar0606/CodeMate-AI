@@ -1,9 +1,9 @@
 # CodeMate AI
 
-Autonomous Developer & DevOps Voice Agent. Milestones 1-4 remain implemented;
-Milestone 5 adds local, read-only AI CI failure investigations through Ollama,
-LangGraph, FastAPI and PostgreSQL. The existing secure GitHub App integration,
-authentication, repository explorer and bounded job logs remain available.
+Local-first Developer & DevOps Voice Agent. Milestones 1-7 provide authentication,
+GitHub exploration, local Ollama/LangGraph diagnosis, voice navigation and reviewed
+patch proposals. Milestone 8 adds durable isolated-execution preparation with a
+hard disabled execution gate until runtime isolation can be verified.
 
 Open `/dashboard/ai` for model status and saved investigations, or Analyze with AI
 on a completed unsuccessful CI/CD run. Successful workflows are summarized without
@@ -13,8 +13,8 @@ Ollama is optional for all existing functionality.
 See [AI diagnostics and exact Windows commands](docs/AI_DIAGNOSTICS.md),
 [GitHub setup and security](docs/GITHUB_INTEGRATION.md),
 [actual verification results](docs/PROGRESS.md) and [Windows startup](docs/WINDOWS.md).
-Voice and developer automation have not started. No commits or workflow writes
-are performed by AI diagnostics.
+Voice and Developer Automation are available. No commits, pushes or workflow
+writes are performed. Sandbox execution remains disabled.
 
 ## Quick start — Windows PowerShell
 
@@ -338,3 +338,17 @@ file. Exact excerpts establish provenance only. Generated interpretations remain
 unverified, all risk statements are hypotheses, and HIGH model confidence is
 capped at MEDIUM. Review decisions remain visible after proposal expiry while
 the parent session remains available. Execution remains disabled.
+
+## Milestone 8: isolated execution preparation
+
+Milestone 8 delivers the safe preparation fallback. Approved Python patch proposals
+can create durable exact execution previews with a five-minute maximum lifetime,
+fixed syntax-profile selection, an immutable confirmation hash, cancellation and
+owner-scoped history/audits in the existing Developer Automation dashboard.
+
+Execution remains disabled in code. No worker, physical workspace, patch application,
+validation output, commit or push is performed. Review approval never launches a
+job. Docker Desktop availability does not establish isolation or worker separation.
+See [Milestone 8 threat model and verification](docs/MILESTONE_8_VERIFICATION.md)
+and [Windows setup](docs/WINDOWS.md). The additive migration head is
+`0006_sandbox_previews`; existing environment files are preserved.

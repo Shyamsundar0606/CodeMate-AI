@@ -536,3 +536,47 @@ summary. Missing/wrong-file IDs fail without saving a partial result. Calls are
 bounded to four, 192 generated tokens each, 35 seconds each and 90 seconds total,
 with no automatic retry or second synthesis. Single-file and patch paths remain
 unchanged. See MILESTONE_7_FINAL_VERIFICATION.md for live persistence results.
+
+## Milestone 8 preparation trust boundary
+
+The sandbox preparation API composes existing AutomationService authorization,
+GitHub membership, owner identity, CSRF and active-session checks. A separate
+SandboxService rechecks the current approved proposal hash and regenerates M7
+patch artifacts from the pinned text and typed replacements. It refuses changed
+source, approval bindings, unsupported paths, empty changes and artifact mismatch.
+It does not parse or execute model shell strings.
+
+PostgreSQL sandbox_previews stores a generated UUID, owner, unique owner/request
+key, nullable proposal reference, complete immutable preview, binding hash, state,
+creation time and expiry. sandbox_audit stores bounded-category events linked to
+that preview. Proposal deletion sets its reference to NULL, retaining the historical
+preview; user deletion cascades. No previous tables are rewritten by migration
+0006_sandbox_previews. Downgrade removes only the new tables and is never required
+on a development database.
+
+Preview state is awaiting_confirmation -> cancelled or expired. There is no
+transition to authorized, queued or running in this fallback. A five-minute expiry
+also cannot exceed source/proposal expiry. Owner advisory locks serialize mutations;
+concurrent operations can receive BUSY/409 and an unchanged retry restores one
+record. A database uniqueness constraint enforces owner/request idempotency. At
+most 100 previews are retained per account and 50 returned in history. Each audit
+category is recorded once per preview, preventing repeated-denial audit growth.
+History and details recheck repository permissions. Expiry does not fabricate an
+execution result. Expected after-hashes are labeled separately from actual changes.
+
+GET /api/v1/sandbox/capabilities reports unverified isolation and execution_enabled
+false. GET /api/v1/sandbox/executions and /executions/{id} return owner-scoped
+preparation history/details. POST /api/v1/auth/sandbox/executions accepts only
+request_id, session_id, proposal_id and profiles=[python_syntax]. POST
+/executions/{id}/cancel cancels preparation idempotently. POST
+/executions/{id}/confirm accepts only binding_hash and interaction=ui_click,
+revalidates the original request, then always returns SANDBOX_UNVERIFIED/503.
+The UI-click field is a request contract, not proof of human presence or an
+authorization mechanism. Voice never invokes this endpoint. All mutations reuse
+CSRF, Origin/custom-header and active cookie/bearer account binding.
+
+No Docker library, socket, CLI invocation, environment override or command runner
+is present in the web application. A separate execution service, credential-free
+source handoff, trusted materializer, verified image, leases and cancellation of
+running code remain prerequisites. See MILESTONE_8_VERIFICATION.md for threats,
+proposed controls and evidence limits. No Milestone 9 capability is added.
