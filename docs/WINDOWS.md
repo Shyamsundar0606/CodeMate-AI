@@ -631,3 +631,85 @@ Milestone 7 blocker follow-up: ordinary `npm.cmd run build` now succeeds using
 no cache deletion or PostCSS edit is required. Development caching and the
 CODEMATE_E2E output option are unchanged. The prior isolated-build workaround
 above is historical. Preserve existing generated files during verification.
+
+## Milestone 8 preparation fallback
+
+No dependency installation or environment-file change is required. Docker Desktop
+must use its WSL2 Linux engine for PostgreSQL. Do not disable Windows security.
+The API never starts a sandbox runner, and there is no execution-worker startup
+command, image build command or enable flag in this fallback. An image digest
+cannot be approved from a tag or inventory listing alone.
+
+Read-only prerequisite checks:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI'
+docker desktop status
+docker context show
+docker info --format '{{.OSType}} {{.ServerVersion}} {{json .SecurityOptions}}'
+docker ps -a --format '{{.Names}} {{.Image}} {{.Status}}'
+```
+
+Start the installed Docker Desktop normally if needed. For the existing database,
+use only the ownership/port-guarded CodeMate helper. It preserves other projects:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infrastructure\start-postgres.ps1
+Set-Location backend
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic heads
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic check
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-proxy-headers
+```
+
+The upgrade is additive to 0005_safe_automation. Do not downgrade personal data.
+Keep existing port 5433 and container codemate-postgres. No extra public port is
+needed. In separate terminals, retain the existing AI worker/Ollama startup and
+frontend startup:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe scripts\ai_worker.py
+# Existing Ollama installation only:
+ollama list
+# Start ollama serve only if its existing service is not already running.
+```
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+npm.cmd run dev
+```
+
+Open /dashboard/automation, inspect an authorized Python file, generate a small
+patch and approve its review. Select Python syntax under sandbox preparation and
+click Prepare execution preview. Inspect exact commit/diff/hash, proposed limits,
+expiry and expected file hashes. Run stays disabled. Cancel the preview, reload
+and verify history. Voice phrases 'show my approved patch', 'show the sandbox
+validation status' and 'open execution history' navigate here without execution.
+
+Checks, with the existing guarded test database available and no concurrent tests:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\backend'
+.\.venv\Scripts\python.exe -m pytest -q -W error --tb=line
+.\.venv\Scripts\python.exe -m pytest security_tests --confcutdir=security_tests -q -W error
+.\.venv\Scripts\python.exe -m ruff check .
+.\.venv\Scripts\python.exe -m ruff format --check .
+.\.venv\Scripts\python.exe -m pip check
+```
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+npm.cmd test
+npm.cmd run lint -- --max-warnings=0
+npm.cmd run typecheck
+npm.cmd run build
+npm.cmd audit --omit=dev
+```
+
+A disabled gate is expected, not a reason to grant Docker privileges to FastAPI.
+An unavailable daemon does not affect source review; an unavailable database
+prevents durable previews and is reported as an error. No real sandbox self-test
+or opt-in execution suite is provided because no runtime service is implemented.
+The prerequisites and unverified negative tests are in MILESTONE_8_VERIFICATION.md.

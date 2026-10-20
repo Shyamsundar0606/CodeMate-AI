@@ -10,8 +10,8 @@ from sqlalchemy import delete, func, select
 
 from app.ai.errors import AIError
 from app.automation.graph import build_graph
-from app.automation.policy import EXECUTION_MESSAGE, digest, reject, safe_path, text_file
-from app.automation.schemas import Proposal, SessionView
+from app.automation.policy import EXECUTION_MESSAGE, digest, patch, reject, safe_path, text_file
+from app.automation.schemas import Change, Proposal, SessionView
 from app.automation.source_scan import python_reason
 from app.integrations.github.exceptions import GitHubError
 from app.integrations.github.logs import redact_logs
@@ -46,6 +46,15 @@ class AutomationService:
             secrets.append(self.settings.github_client_secret.get_secret_value())
         if source_path and source_path.endswith(".py"):
             reason = python_reason(value, secrets)
+            if reason == "unsupported or invalid Python syntax":
+                raise AIError(
+                    "AUTOMATION_PYTHON_SYNTAX_INVALID",
+                    f"Python content for {source_path} is syntactically invalid or unsupported. "
+                    "If this followed generation, the proposed replacement was rejected and "
+                    "no suggestion was saved. No files were changed. "
+                    "This syntax error does not establish a credential problem.",
+                    422,
+                )
             if reason:
                 raise reject(
                     f"Source file {source_path} rejected: {reason}. "
@@ -233,6 +242,8 @@ class AutomationService:
                 try:
                     files[name] = self.clean_text(text_file(raw), source_path=name)
                 except AIError as exc:
+                    if exc.detail["code"] == "AUTOMATION_PYTHON_SYNTAX_INVALID":
+                        raise
                     if not exc.detail["message"].startswith("Source file "):
                         raise reject(
                             f"Source file {name} rejected: credential pattern, "
@@ -379,6 +390,19 @@ class AutomationService:
                     raise reject(
                         "Workspace, revision or patch changed. Review a new proposal.", 409
                     )
+                if body.decision == "approve":
+                    validated = patch(
+                        row.context["files"],
+                        [Change.model_validate(c) for c in item.content["suggestion"]["changes"]],
+                    )
+                    if (
+                        not validated
+                        or validated != item.content["changes"]
+                        or "".join(c["diff"] for c in validated) != item.content["diff"]
+                    ):
+                        raise reject(
+                            "Stored patch no longer satisfies the current review policy.", 409
+                        )
                 if len(set(body.validations)) != len(body.validations) or not set(
                     body.validations
                 ) <= set(item.content["suggestion"]["validations"]):

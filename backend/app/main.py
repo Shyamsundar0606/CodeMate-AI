@@ -21,6 +21,8 @@ from app.api.routes.automation import mutations as automation_mutations
 from app.api.routes.automation import router as automation_router
 from app.api.routes.github import mutations as github_mutations
 from app.api.routes.github import router as github_router
+from app.api.routes.sandbox import mutations as sandbox_mutations
+from app.api.routes.sandbox import router as sandbox_router
 from app.api.routes.users import router as users_router
 from app.api.routes.voice import mutations as voice_mutations
 from app.api.routes.voice import router as voice_router
@@ -126,7 +128,7 @@ def create_app(
                 revision = connection.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar()
-            if revision != "0005_safe_automation":
+            if revision != "0006_sandbox_previews":
                 return JSONResponse(status_code=503, content={"status": "unavailable"})
         except SQLAlchemyError:
             return JSONResponse(status_code=503, content={"status": "unavailable"})
@@ -141,6 +143,8 @@ def create_app(
     application.include_router(ai_mutations)
     application.include_router(automation_router)
     application.include_router(automation_mutations)
+    application.include_router(sandbox_router)
+    application.include_router(sandbox_mutations)
     application.include_router(voice_router)
     application.include_router(voice_mutations)
     return application

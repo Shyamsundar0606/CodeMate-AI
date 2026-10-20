@@ -101,6 +101,11 @@ def patch(files, changes):
         if change.before_sha256 != digest(before):
             raise reject("Patch base content hash does not match the pinned source.")
         after = text_file(change.replacement.encode("utf-8"))
+        if not after.strip():
+            raise reject(
+                "Clearing an existing file is unsupported. No patch was applied. "
+                "Use Explain source for explanation-only requests or request a specific edit."
+            )
         # Preserve an existing CRLF convention rather than silently rewriting the file.
         if "\r\n" in before and "\n" in after and "\r\n" not in after:
             after = after.replace("\n", "\r\n")

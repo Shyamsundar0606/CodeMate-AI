@@ -878,3 +878,49 @@ def test_review_history_survives_proposal_expiration(automation, value, status):
     assert restored["proposals"][0]["status"] == status
     assert any(event["event"] == "proposal_" + status for event in restored["audit"])
     assert client.post(url(row), json=decision(row, value)).status_code == 409
+
+
+def test_legacy_file_clearing_proposal_cannot_be_approved_but_can_be_rejected(automation, db):
+    import copy
+    import difflib
+
+    from app.models.automation import AutomationSession
+    from app.services.automation_service import AutomationService
+
+    row = prepare(automation)
+    proposal = db.get(AutomationProposal, uuid.UUID(row["proposals"][0]["id"]))
+    source = db.get(AutomationSession, uuid.UUID(row["id"]))
+    content = copy.deepcopy(proposal.content)
+    content["suggestion"]["changes"][0]["replacement"] = ""
+    rendered = "".join(
+        difflib.unified_diff(
+            SOURCE.splitlines(keepends=True),
+            [],
+            fromfile="a/main.py",
+            tofile="b/main.py",
+        )
+    )
+    content["changes"] = [
+        {
+            "path": "main.py",
+            "before_sha256": digest(SOURCE),
+            "after_sha256": digest(""),
+            "replacement": "",
+            "diff": rendered,
+        }
+    ]
+    content["diff"] = rendered
+    service = AutomationService(
+        db, automation[0].app.state.settings, source.user_id, None, None, None
+    )
+    proposal.content = content
+    proposal.patch_hash = service.content_hash(source, content)
+    new_hash = proposal.patch_hash
+    db.commit()
+    body = {**decision(row), "patch_hash": new_hash}
+    response = automation[0].post(url(row), json=body)
+    assert response.status_code == 422
+    assert "Clearing an existing file is unsupported" in response.json()["detail"]["message"]
+    db.expire_all()
+    assert db.get(AutomationProposal, proposal.id).status == "awaiting_approval"
+    assert automation[0].post(url(row), json={**body, "decision": "reject"}).status_code == 200

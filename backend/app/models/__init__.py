@@ -8,10 +8,13 @@ from app.models.automation import (
 from app.models.github_connection import GitHubConnection, GitHubOAuthState
 from app.models.login_throttle import LoginThrottle
 from app.models.refresh_session import RefreshSession
+from app.models.sandbox import SandboxAudit, SandboxPreview
 from app.models.user import Role, User
 from app.models.voice import VoiceAction, VoiceBudget, VoiceSession, VoiceTurn
 
 __all__ = [
+    "SandboxAudit",
+    "SandboxPreview",
     "AutomationSession",
     "AutomationProposal",
     "AutomationAudit",

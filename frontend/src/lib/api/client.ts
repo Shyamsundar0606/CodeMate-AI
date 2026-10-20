@@ -22,7 +22,7 @@ export class ApiClient {
 
   async request<T>(path: string, options: RequestInit = {}, schema?: z.ZodType<T>): Promise<T> {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), (path.includes("/automation/") || path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) ? ((path.includes("/voice/") || path.includes("/automation/")) ? 180000 : 30000) : this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), (path.includes("/sandbox/") || path.includes("/automation/") || path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) ? ((path.includes("/voice/") || path.includes("/automation/")) ? 180000 : 30000) : this.timeoutMs);
     const abort = () => controller.abort();
     if (options.signal?.aborted) controller.abort();
     options.signal?.addEventListener("abort", abort, { once: true });
@@ -34,10 +34,10 @@ export class ApiClient {
         ...options, headers, credentials: "include", cache: "no-store", signal: controller.signal,
       });
       if (!response.ok) {
-        if (path.includes("/automation/") || path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) {
+        if (path.includes("/sandbox/") || path.includes("/automation/") || path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) {
           const body = await response.json().catch(() => null);
           const detail = body?.detail;
-          if (typeof detail?.code === "string" && /^(?:GITHUB|AI|VOICE|AUTOMATION)_[A-Z_]+$/.test(detail.code) && typeof detail.message === "string") {
+          if (typeof detail?.code === "string" && /^(?:GITHUB|AI|VOICE|AUTOMATION|SANDBOX)_[A-Z_]+$/.test(detail.code) && typeof detail.message === "string") {
             throw new ApiError(detail.message.slice(0, 500), response.status, "http", detail.code, typeof detail.retry_after === "number" ? detail.retry_after : undefined);
           }
         }

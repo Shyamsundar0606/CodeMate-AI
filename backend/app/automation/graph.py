@@ -11,6 +11,9 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import ValidationError
 
 from app.automation.citations import catalog_for, invalid, parse_output, resolve, wire_schema
+from app.automation.docstrings import generate_docstring
+from app.automation.docstrings import requested as docstring_requested
+from app.automation.edits import TargetedSuggestion, expand_edits
 from app.automation.explanations import explain_files
 from app.automation.policy import digest, patch, reject
 from app.automation.schemas import GeneratedSuggestion, Suggestion
@@ -35,12 +38,42 @@ def build_graph(ollama, validate_text):
                 "generated": explain_files(ollama, state, catalog, validate_text),
                 "catalog": catalog,
             }
+        if docstring_requested(state):
+            return {"generated": generate_docstring(ollama, state, catalog), "catalog": catalog}
+        focused = state["mode"] == "patch" and any(
+            len(content.encode("utf-8")) > 4000 for content in state["files"].values()
+        )
+        model = TargetedSuggestion if focused else GeneratedSuggestion
+        schema = wire_schema(model, catalog)
+        change_kind = "TargetedChange" if focused else "Change"
+        # Guide structured decoding as well as validating the result. Explain responses
+        # must never contain edits; patch responses must propose at least one change.
+        schema["properties"]["changes"]["minItems"] = 0 if state["mode"] == "explain" else 1
+        schema["properties"]["changes"]["maxItems"] = (
+            0 if state["mode"] == "explain" else min(4, len(state["files"]))
+        )
+        schema["$defs"][change_kind]["properties"]["replacement"].update(minLength=1, pattern=r"\S")
+        change_schema = schema["$defs"][change_kind]["properties"]
+        change_schema["path"]["enum"] = list(state["files"])
+        change_schema["before_sha256"]["enum"] = [digest(c) for c in state["files"].values()]
+        if focused:
+            anchors = list(
+                dict.fromkeys(
+                    entry["quote"]
+                    for entry in catalog.values()
+                    if entry["kind"] == "source"
+                    and state["files"][entry["source"]].count(entry["quote"]) == 1
+                )
+            )
+            if not anchors:
+                raise reject("No unambiguous source excerpt is available for a small edit.")
+            change_schema["original"]["enum"] = anchors
         data = ollama.request(
             "/api/chat",
             {
                 "model": ollama.settings.ollama_model,
                 "stream": False,
-                "format": wire_schema(GeneratedSuggestion, catalog),
+                "format": schema,
                 "messages": [
                     {
                         "role": "system",
@@ -60,7 +93,20 @@ def build_graph(ollama, validate_text):
                             "Distinguish source observations from assumptions about framework "
                             "behavior. All security risks are unverified hypotheses, never "
                             "established vulnerabilities. Omit unsupported security assertions. "
-                            "Use before_sha256 from files. Change only supplied existing files. "
+                            "Use exact path keys and before_sha256 from files. "
+                            "List each changed path only once. "
+                            + (
+                                "Return a small exact anchored edit. Select original verbatim "
+                                "from the original enum in the schema. "
+                                "replacement is only the new text for that excerpt, preserving "
+                                "its indentation and all unaffected lines in that excerpt. "
+                                "Never return a full-file replacement. Use at most 80 words "
+                                "of explanation, one short risk and one short limitation. "
+                                if focused
+                                else "replacement must be the complete resulting file, "
+                                "never a fragment or a unified diff. "
+                            )
+                            + "Preserve all unrelated source, imports and behavior. "
                             "In explain mode keep changes empty, use at most 120 words, "
                             "one short risk and one limitation. Write a separate short paragraph "
                             "for every requested file. Select at least one directly relevant "
@@ -76,7 +122,10 @@ def build_graph(ollama, validate_text):
                                 "request": state["request"],
                                 "mode": state["mode"],
                                 "files": {
-                                    p: {"before_sha256": digest(c)}
+                                    p: {
+                                        "before_sha256": digest(c),
+                                        **({"content": c} if state["mode"] == "patch" else {}),
+                                    }
                                     for p, c in state["files"].items()
                                 },
                                 "evidence_catalog": list(catalog.values()),
@@ -96,7 +145,7 @@ def build_graph(ollama, validate_text):
                 "options": {
                     "temperature": 0,
                     "num_ctx": 16384,
-                    "num_predict": 1600 if state["mode"] == "explain" else 4000,
+                    "num_predict": 1600 if focused or state["mode"] == "explain" else 4000,
                 },
                 "keep_alive": "5m",
             },
@@ -105,7 +154,9 @@ def build_graph(ollama, validate_text):
         try:
             if data.get("done") is not True or data.get("done_reason") == "length":
                 raise ValueError()
-            suggestion = parse_output(GeneratedSuggestion, data["message"]["content"])
+            suggestion = parse_output(model, data["message"]["content"])
+            if focused:
+                suggestion = expand_edits(state["files"], suggestion)
         except ValidationError as exc:
             if any(
                 error["loc"] and error["loc"][0] == "evidence"
@@ -141,8 +192,17 @@ def build_graph(ollama, validate_text):
                 "Relevant source evidence is missing for: " + ", ".join(sorted(missing)) + "."
             )
         s = Suggestion.model_validate({**generated.model_dump(), "evidence": citations})
-        if state["mode"] == "explain" and s.changes or state["mode"] == "patch" and not s.changes:
-            raise reject("Model response does not match the requested proposal mode.")
+        if state["mode"] == "explain" and s.changes:
+            raise reject(
+                "The explanation response unexpectedly included edits. No suggestion was saved. "
+                "Keep Explain source selected and retry a concise explanation request."
+            )
+        if state["mode"] == "patch" and not s.changes:
+            raise reject(
+                "No patch was returned. For an explanation-only request, select Explain source. "
+                "For a patch, describe a specific change to the inspected file. "
+                "No suggestion was saved."
+            )
         changes = patch(state["files"], s.changes)
         # Never treat JSON serialization or already-grounded source quotes as
         # credential assignments. Each typed field still receives security checks.

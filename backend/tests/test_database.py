@@ -74,7 +74,7 @@ def test_migration_matches_metadata(engine):
     with engine.connect() as connection:
         assert (
             connection.scalar(text("SELECT version_num FROM alembic_version"))
-            == "0005_safe_automation"
+            == "0006_sandbox_previews"
         )
         assert connection.scalar(text("SELECT current_database()")) == "codemate_test_db"
 

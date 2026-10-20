@@ -45,6 +45,10 @@ def known(text):
         v in text
         for v in (
             "developer automation",
+            "approved patch",
+            "sandbox validation status",
+            "execution history",
+            "why the tests failed",
             "propose a fix",
             "prepare a fix",
             "suggested patch",
