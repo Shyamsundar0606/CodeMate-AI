@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Response
 from app.api.dependencies.auth import AuthenticatedUser, require_auth_request
 from app.api.routes.automation import Mutation, Service
 from app.sandbox.policy import capabilities
-from app.sandbox.schemas import Confirm, ExecutionView, Prepare
+from app.sandbox.schemas import Capabilities, Confirm, ExecutionView, Prepare
 from app.services.sandbox_service import SandboxService
 
 router = APIRouter(prefix="/api/v1/sandbox", tags=["sandbox preparation"])
@@ -30,7 +30,7 @@ Read = Annotated[SandboxService, Depends(read_service)]
 Write = Annotated[SandboxService, Depends(write_service)]
 
 
-@router.get("/capabilities")
+@router.get("/capabilities", response_model=Capabilities)
 def status(user: AuthenticatedUser, response: Response):
     response.headers["Cache-Control"] = "no-store"
     return capabilities()

@@ -1,7 +1,14 @@
 import { z } from "zod";
 
 const profile = z.object({ id: z.literal("python_syntax"), argv: z.array(z.string()), description: z.string() });
-export const sandboxCapabilitySchema = z.object({ execution_enabled: z.literal(false), verification: z.literal("unverified"), reasons: z.array(z.string()), profiles: z.array(profile) });
+export const runnerReadinessSchema = z.object({
+  policy_version: z.literal("m10-readiness-v1"), state: z.literal("blocked"),
+  checks: z.array(z.object({
+    id: z.enum(["worker_identity", "launcher_boundary", "image_provenance", "hostile_isolation", "durable_recovery", "fixture_integration"]),
+    status: z.enum(["not_implemented", "unverified"]), label: z.string().max(80), reason: z.string().max(240),
+  }).strict()).length(6).refine(checks => new Set(checks.map(check => check.id)).size === 6, "Admission requirements must be distinct"),
+}).strict();
+export const sandboxCapabilitySchema = z.object({ execution_enabled: z.literal(false), verification: z.literal("unverified"), reasons: z.array(z.string()), profiles: z.array(profile), readiness: runnerReadinessSchema });
 export const executionPreviewSchema = z.object({
   id: z.string().uuid(), state: z.enum(["awaiting_confirmation", "cancelled", "expired"]),
   binding_hash: z.string(), expires_at: z.string(), execution_enabled: z.literal(false),

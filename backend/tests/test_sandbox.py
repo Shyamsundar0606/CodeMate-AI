@@ -43,6 +43,19 @@ def test_unauthenticated_reads(client, path):
     assert client.get(READ + path).status_code == 401
 
 
+def test_authenticated_readiness_is_blocked_and_not_cacheable(automation):
+    response = automation[0].get(READ + "/capabilities")
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    result = response.json()
+    assert result["execution_enabled"] is False
+    assert result["readiness"]["state"] == "blocked"
+    assert len({check["id"] for check in result["readiness"]["checks"]}) == 6
+    assert all(
+        c["status"] in {"not_implemented", "unverified"} for c in result["readiness"]["checks"]
+    )
+
+
 def test_preview_exact_and_persisted(automation):
     row, body, result = preview(automation)
     client, _ = automation

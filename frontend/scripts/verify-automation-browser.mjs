@@ -43,6 +43,8 @@ try {
   await expect(page.getByRole("heading", { name: "Exact execution preview", exact: true })).toBeVisible();
   await expect(page.getByLabel("Execution preview diff")).toContainText("+    return a + b");
   await expect(page.getByRole("button", { name: "Run in isolated sandbox (execution disabled)", exact: true })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Runner admission: blocked", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Runner admission requirements").locator("li")).toHaveCount(6);
   await expect(page.getByText("Patch not applied. Validation not executed. No exit code or test output exists.", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Cancel execution preview", exact: true }).click();
   await expect(page.getByText("State: cancelled", { exact: true })).toBeVisible();
@@ -65,7 +67,7 @@ try {
   await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: resolve(root, "test-results/automation-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 }); await page.getByRole("heading", { name: "Developer Automation", exact: true }).click(); await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: resolve(root, "test-results/automation-mobile.png"), fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth); expect(overflow).toBe(false); expect(errors).toBe(0); expect(executions).toBe(0);
-  console.log(JSON.stringify({ browser: "Microsoft Edge", realFrontendAndFastAPI: true, disposableTestDatabase: true, upstreamGitHubAndOllama: "controlled fixtures", sandboxPreview: true, separateRunDisabled: true, cancelledPreviewRestored: true, sourceInspection: true, diffPreview: true, rejection: true, reviewApproval: true, persistedHistory: true, secretPathRejected: true, voiceNavigation: true, executionRequests: executions, mobileOverflow: overflow, pageErrors: errors }));
+  console.log(JSON.stringify({ browser: "Microsoft Edge", realFrontendAndFastAPI: true, disposableTestDatabase: true, upstreamGitHubAndOllama: "controlled fixtures", runnerAdmissionBlocked: true, admissionRequirements: 6, sandboxPreview: true, separateRunDisabled: true, cancelledPreviewRestored: true, sourceInspection: true, diffPreview: true, rejection: true, reviewApproval: true, persistedHistory: true, secretPathRejected: true, voiceNavigation: true, executionRequests: executions, mobileOverflow: overflow, pageErrors: errors }));
 } catch (error) {
   if (page?.url().includes("/dashboard/automation")) { await mkdir(resolve(root, "test-results"), { recursive: true }); await page.screenshot({ path: resolve(root, "test-results/automation-failure.png"), fullPage: true }); console.error("Automation fixture visible text:", (await page.locator("main").innerText()).slice(0, 1800)); }
   throw error;

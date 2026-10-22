@@ -3,6 +3,8 @@
 import hashlib
 import json
 
+from app.sandbox.readiness import readiness
+
 PROFILE = {
     "id": "python_syntax",
     "argv": ["python", "-I", "-S", "/opt/codemate/validate_syntax.py"],
@@ -49,4 +51,5 @@ def capabilities():
         "reasons": REASONS,
         "isolation": ISOLATION,
         "profiles": [PROFILE],
+        "readiness": readiness(),
     }

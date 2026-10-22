@@ -1756,3 +1756,35 @@ scope/status distinctions, all outstanding blockers, the 18-file review allowlis
 and PowerShell setup. No application patch was applied or validation executed.
 The verified-runner definition of done is not met. No files staged, committed,
 pushed or merged; no Milestone 10 work.
+
+### Milestone 10 admission preparation, 2026-10-22
+
+Started from clean main f2b80c3 on feature/milestone-10-restricted-runner, preserving
+all four stashes. The local shared Docker Desktop engine still does not establish
+restricted worker/launcher identities, approved image provenance or a dedicated
+hostile-code isolation boundary. The permitted preparation-only scope was selected.
+
+Added six blocked admission requirements with strict authenticated API and frontend
+contracts, honest dashboard display, invalid-response handling and safe voice
+navigation. Existing exact preview hashes, review/execution separation, disabled
+Run, cancellation and history remain. No executable queue, migration 0007 or actual
+repository patch/validation path was added. The target VM/identity/launcher and
+fenced durable recovery design is documented without claiming implementation.
+
+Vendor/advisory research informed three exact Python fixes: certifi 2026.10.19,
+cryptography 50.0.2 and pytest 9.0.3. Only those installed packages changed, with
+matching source ranges and lockfile. Full backend regression passed 537 cases with
+warnings as errors; frontend passed 171. Ruff, Alembic metadata/head, migration
+regressions, pip check, ESLint, TypeScript and Next.js 16.4.2 production build pass.
+The isolated Python audit reports zero known findings across 85 pins. npm production
+audit is clean; five existing high development-tooling findings remain.
+
+Five real trusted Docker fixtures passed again with exact-container cleanup. Scout
+indexed 127 image packages; its CVE lookup requires login and was not completed.
+Public amd64 SLSA metadata exists, but independent signature/trust-root approval
+was not performed. No runtime image is approved. Image vulnerability status remains
+unknown. Fixture success is not evidence of arbitrary escape resistance.
+
+See MILESTONE_10_VERIFICATION.md for browser results, scope distinctions, exact
+review allowlist and remaining blockers. Full runner completion is not claimed.
+Nothing staged, committed, pushed or merged. No Milestone 11 work.

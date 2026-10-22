@@ -36,7 +36,15 @@ export function SandboxPanel({ sessionId, proposalId, pending = false }: { sessi
     <p>Execution disabled. Isolation verification is required before application or validation. Review approval requires a separate execution confirmation.</p>
     {capability.isPending && <p role="status">Checking sandbox readiness...</p>}
     {capability.isError && <p role="alert">Sandbox unavailable. {apiErrorMessage(capability.error)}</p>}
+    {capability.data && !sandboxCapabilitySchema.safeParse(capability.data).success && <p role="alert">Runner readiness response is invalid. Execution remains disabled.</p>}
     {sandboxCapabilitySchema.safeParse(capability.data).success && <ul>{sandboxCapabilitySchema.parse(capability.data).reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>}
+    {sandboxCapabilitySchema.safeParse(capability.data).success && <div aria-label="Runner admission requirements">
+      <h3>Runner admission: blocked</h3>
+      <p>Preparation only. These requirements are not runtime progress or execution approval.</p>
+      <ul>{sandboxCapabilitySchema.parse(capability.data).readiness.checks.map(check => <li key={check.id}>
+        <strong>{check.label}</strong>: {check.status.replaceAll("_", " ")}<p>{check.reason}</p>
+      </li>)}</ul>
+    </div>}
     {proposalId && <><label>Validation profile<select value={profile} disabled={busy || pending} onChange={event => { setProfile(event.target.value); requestId.current = null; }}><option value="python_syntax">Python syntax (preparation only)</option></select></label>
       <p>Only approved Python changes are supported. Preparing a preview does not create a filesystem workspace.</p>
       <button disabled={busy || pending} onClick={() => { requestId.current ||= crypto.randomUUID(); void mutate("/api/v1/auth/sandbox/executions", { request_id: requestId.current, session_id: sessionId, proposal_id: proposalId, profiles: [profile] }); }}>Prepare execution preview</button></>}

@@ -11,6 +11,13 @@ worker separation and hostile-code isolation remain blockers. Application Run
 remains disabled. See [Milestone 9 verification](docs/MILESTONE_9_VERIFICATION.md)
 for the exact evidence, release blockers and Windows commands.
 
+Milestone 10 exposes six explicit blocked runner-admission requirements in the
+authenticated API/dashboard and updates the three reviewed Python dependency
+security pins. The shared local Docker environment still lacks verified worker,
+launcher and hostile-code boundaries. Execution remains disabled. See
+[Milestone 10 verification](docs/MILESTONE_10_VERIFICATION.md) for current tests,
+image/provenance evidence, dependency research and the remaining runner work.
+
 Open `/dashboard/ai` for model status and saved investigations, or Analyze with AI
 on a completed unsuccessful CI/CD run. Successful workflows are summarized without
 inventing failures or invoking the model. Start the dedicated AI worker separately;
