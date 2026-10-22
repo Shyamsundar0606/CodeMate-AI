@@ -613,3 +613,33 @@ API retains hard confirmation denial, Literal false response contracts and no
 Docker integration. The existing preparation UI remains honest and disabled.
 Safe voice additions navigate to automation for last result, failed validation
 and tested patch requests; they do not claim a result exists or start execution.
+
+## Milestone 10 admission preparation and restricted-service design
+
+GET /api/v1/sandbox/capabilities remains authenticated and no-store. Its new strict
+response model adds readiness with policy_version=m10-readiness-v1, state=blocked
+and six distinct requirements: worker_identity, launcher_boundary, image_provenance,
+hostile_isolation, durable_recovery and fixture_integration. Statuses can only be
+not_implemented or unverified. There is no approved status or enable override.
+Readiness is generated as fresh metadata, not loaded from the local fixture JSON.
+It does not change the M8 preview isolation policy, hashes or confirmation binding.
+
+The frontend independently validates the same blocked contract, displays each
+requirement as inert text and reports invalid readiness. Run remains disabled and
+the confirmation endpoint independently denies execution. The requirements are not
+job progress. New latest-validation, failed-validation and readiness voice phrases
+only navigate to automation. Existing review and preview cancellation persist.
+
+The required architecture uses a separate job-only worker identity and an
+authenticated narrow launcher inside a dedicated sandbox VM/service. Neither is
+provisioned on this shared Docker Desktop machine. FastAPI and the credential-
+bearing AI worker retain no runtime control. A future launcher must enforce job
+identity/fencing itself, not merely rely on rejecting stale database results.
+Trusted acquisition and strict no-follow materialization must occur outside the
+untrusted workload, without GitHub tokens or original-checkout mounts. Uncertain
+execution must be reconciled or marked interrupted rather than retried blindly.
+
+The detailed trust boundaries, proposed job lifecycle, source/applier design and
+unmet independent approval requirements are in MILESTONE_10_VERIFICATION.md.
+No worker, executable queue, new migration, repository applier or actual validation
+was added. This is preparation-only scope, not full restricted-runner completion.

@@ -1,0 +1,95 @@
+{
+  "version": "m9-fixture-v1",
+  "at": "2026-10-22T20:45:58.067422+00:00",
+  "image_id": "sha256:753c49dfd11314e64f6abf877c6d5e2f58304ed628215f11855960058d6f5430",
+  "execution_enabled": false,
+  "provenance_verified": false,
+  "worker_separation_verified": false,
+  "source_sha256": {
+    "Dockerfile": "2581e061f4d6532799e7360722a7568578c1fb9d925e91b4e0ddb5e16e221d08",
+    "probe.py": "b0c66298a5363495da7e1120038b62368dd08223fda678805288378ff2941799",
+    "verify.py": "c2add88212c54845efe8668fe0fb010327f0bef5e90542d67f91f0b767271728"
+  },
+  "cases": [
+    {
+      "case": "baseline",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 0,
+      "timed_out": false,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 0,
+      "evidence": {
+        "checks": {
+          "non_root": true,
+          "root_read_only": true,
+          "no_new_privileges": true,
+          "no_effective_capabilities": true,
+          "seccomp_filter": true,
+          "no_socket_or_host_paths": true,
+          "no_app_environment": true,
+          "external_ip_blocked": true,
+          "host_database_blocked": true,
+          "host_ollama_blocked": true,
+          "memory_limit": true,
+          "pid_limit": true,
+          "cpu_limit": true,
+          "tmpfs_limit": true,
+          "original_unchanged": true,
+          "patched_hash": true
+        },
+        "after_sha256": "ba1a531f581d2e6094e978ed6f7aca7a8d92eeb62c6e7ad73ee692f7f18bc772"
+      }
+    },
+    {
+      "case": "pids",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 0,
+      "timed_out": false,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 0,
+      "evidence": {
+        "pid_limit_enforced": true,
+        "children": 31
+      }
+    },
+    {
+      "case": "memory",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 137,
+      "timed_out": false,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 137,
+      "oom_killed": true
+    },
+    {
+      "case": "timeout",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 1,
+      "timed_out": true,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 137,
+      "runtime_stopped": true
+    },
+    {
+      "case": "cancel",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 1,
+      "timed_out": false,
+      "cancellation_requested": true,
+      "configuration_checked": true,
+      "exit_code": 137,
+      "runtime_stopped": true
+    }
+  ],
+  "fixture_checks_passed": true,
+  "source_line_endings_note": "Working-tree raw hashes include Git CRLF conversion; normalized sources match the M9 report. No new image provenance approval."
+}

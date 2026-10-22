@@ -7,7 +7,10 @@ import { safeVoiceRoute } from "@/lib/voice";
 import { ApiError } from "@/lib/api/client";
 const { post, get, refetch } = vi.hoisted(() => ({ post: vi.fn(), get: vi.fn(), refetch: vi.fn() }));
 vi.mock("@/providers/auth-provider", () => { const session = { post, get }; return { useAuth: () => ({ session, user: { id: "automation-owner" } }) }; });
-vi.mock("@/lib/ai", () => ({ useAI: () => ({ data: [], isPending: false, isError: false, refetch }) }));
+vi.mock("@/lib/ai", () => ({ useAI: (path: string) => ({ data: path.endsWith("/capabilities") ? {
+  execution_enabled: false, verification: "unverified", reasons: ["Runner unavailable"], profiles: [],
+  readiness: { policy_version: "m10-readiness-v1", state: "blocked", checks: ["worker_identity", "launcher_boundary", "image_provenance", "hostile_isolation", "durable_recovery", "fixture_integration"].map(id => ({ id, status: "unverified", label: id, reason: "Independent verification required" })) },
+} : [], isPending: false, isError: false, refetch }) }));
 vi.mock("@/components/github/repositories", () => ({ InstallationPicker: ({ onChange }: { onChange: (value: string) => void }) => <button type="button" onClick={() => onChange("10")}>Select installation</button> }));
 vi.mock("@/lib/github", () => ({ pageSchema: vi.fn(), repositorySchema: {}, useGitHub: () => ({ data: { items: [{ id: 1, full_name: "octocat/demo" }] } }) }));
 const sid = "3c337168-8a43-4f3e-bbaf-cf055ec41101";

@@ -785,3 +785,83 @@ Standard CI runs mocked prototype-contract tests, not the Docker probe. From bac
 `python -m ruff check . ../infrastructure/sandbox --config pyproject.toml` and the
 corresponding `ruff format --check` cover both source trees. Full current results,
 dependency findings and remaining blockers are in MILESTONE_9_VERIFICATION.md.
+
+## Milestone 10 preparation-only readiness
+
+The restricted worker/launcher is not implemented or approved on this shared
+development engine. There is no sandbox-worker startup or enable command. Do not
+reuse the AI worker for execution or grant Docker access to FastAPI. The design
+and missing identity/provenance/VM evidence are in MILESTONE_10_VERIFICATION.md.
+
+Install only the reviewed project lockfile and retain existing environment files:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI'
+.\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements-dev.lock.txt
+.\backend\.venv\Scripts\python.exe -m pip check
+docker desktop status
+# If needed: docker desktop start
+wsl --status
+docker --context desktop-linux info --format '{{.OSType}} {{.ServerVersion}} {{json .SecurityOptions}}'
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infrastructure\start-postgres.ps1
+Set-Location backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+# Expected head: 0006_sandbox_previews. No destructive recreation or downgrade.
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-proxy-headers
+```
+
+Separate terminals retain the existing frontend and optional model/investigation
+worker. The AI worker is not a sandbox service:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+npm.cmd ci
+npm.cmd run dev
+# Optional existing investigation worker, separate backend terminal:
+# .\.venv\Scripts\python.exe scripts\ai_worker.py
+ollama list
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+```
+
+Open /dashboard/automation after signing in. Read the six blocked admission
+requirements. Preparing/cancelling a preview works as before; Run stays disabled.
+Requests to show the latest validation result or sandbox readiness navigate here,
+without claiming tests ran. Invalid backend readiness is explicitly reported.
+
+The M9 offline build/immutable image inspection and trusted fixture command above
+remain valid. They cannot approve a runner. Additional read-only image inspection:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI'
+docker scout sbom local://codemate-sandbox-probe:m9-fixture-v1 --format list
+docker scout cves local://codemate-sandbox-probe:m9-fixture-v1 --only-severity critical,high
+# CVE lookup may require Docker login. Missing results mean unknown, not clean.
+# Do not change account credentials merely to make verification look complete.
+```
+
+Review public digest provenance separately from a signature/trust-root approval.
+Never approve an image solely because it has a local ID, tag, SBOM or metadata.
+The fixed fixture image still contains general tools and is not approved for
+untrusted repositories. No package installation/network fallback is supported.
+
+After backend tests finish, verify the preparation UI only with free ports 3000
+and 8001; the script refuses occupied ports rather than stopping personal servers:
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+npm.cmd run build
+node scripts/verify-automation-browser.mjs
+```
+
+This uses disposable test accounts, controlled GitHub/Ollama and the existing
+guarded test database. It asserts six blocked requirements and zero execution
+requests, then cleans only its owned fixture resources. Do not run it concurrently
+with backend pytest. Screenshots remain ignored, not source to stage.
+
+Use Ctrl+C in each terminal to stop only processes you started. Leave the existing
+PostgreSQL volume and unrelated containers intact. M9 probe cleanup targets exact
+owned containers; process/daemon crashes still require manual label inspection.
+There are no durable execution logs, job recovery or orphan-manager commands in
+this preparation release. No Windows security setting needs to be disabled.
