@@ -31,6 +31,8 @@ REASONS = [
     "No verified isolated execution service is configured.",
     "Image provenance, runtime separation and negative isolation tests are unverified.",
     "Patch application and validation have not run. Review approval is not execution approval.",
+    "Fixture-only Docker probes cannot approve image provenance, "
+    "worker separation or execution readiness.",
 ]
 
 

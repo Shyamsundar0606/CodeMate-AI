@@ -76,9 +76,9 @@ jobs:
               environment.write("JWT_SECRET_KEY=" + secrets.token_urlsafe(48) + "\n")
           PY
       - name: Check Ruff lint
-        run: python -m ruff check .
+        run: python -m ruff check . ../infrastructure/sandbox --config pyproject.toml
       - name: Check Ruff formatting
-        run: python -m ruff format --check .
+        run: python -m ruff format --check . ../infrastructure/sandbox --config pyproject.toml
       - name: Apply and verify Alembic migrations
         run: |
           python -m alembic upgrade head

@@ -5,6 +5,12 @@ GitHub exploration, local Ollama/LangGraph diagnosis, voice navigation and revie
 patch proposals. Milestone 8 adds durable isolated-execution preparation with a
 hard disabled execution gate until runtime isolation can be verified.
 
+Milestone 9 adds an opt-in, offline Docker fixture prototype and a written threat
+model. Five real container checks passed locally; image provenance, restricted
+worker separation and hostile-code isolation remain blockers. Application Run
+remains disabled. See [Milestone 9 verification](docs/MILESTONE_9_VERIFICATION.md)
+for the exact evidence, release blockers and Windows commands.
+
 Open `/dashboard/ai` for model status and saved investigations, or Analyze with AI
 on a completed unsuccessful CI/CD run. Successful workflows are summarized without
 inventing failures or invoking the model. Start the dedicated AI worker separately;
@@ -70,7 +76,7 @@ Use localhost consistently for browser URLs and the configured API origin.
 | Development database / role | codemate_db / codemate_user |
 | Test database / role | codemate_test_db / codemate_test_user |
 | Persistent volume | codemate-ai-postgres-data |
-| Alembic head | 0003_ai_investigations |
+| Alembic head | 0006_sandbox_previews |
 
 VoxHire's port 5432 and all of its resources remain untouched. Development and test
 roles have different generated passwords, own their own databases, and cannot
