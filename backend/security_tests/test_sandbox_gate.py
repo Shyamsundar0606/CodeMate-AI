@@ -195,6 +195,9 @@ def test_unverified_capability_has_no_image_or_enable_override(monkeypatch):
         "CodeMate, show the sandbox validation status",
         "CodeMate, open execution history",
         "CodeMate, explain why the tests failed",
+        "CodeMate, show my last sandbox result",
+        "CodeMate, explain my failed validation",
+        "CodeMate, show the patch that was tested",
     ],
 )
 def test_voice_only_navigates_to_preparation(phrase):

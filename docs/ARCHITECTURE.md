@@ -579,4 +579,37 @@ No Docker library, socket, CLI invocation, environment override or command runne
 is present in the web application. A separate execution service, credential-free
 source handoff, trusted materializer, verified image, leases and cancellation of
 running code remain prerequisites. See MILESTONE_8_VERIFICATION.md for threats,
-proposed controls and evidence limits. No Milestone 9 capability is added.
+proposed controls and evidence limits. This describes the Milestone 8 baseline.
+
+## Milestone 9 fixture prototype boundary
+
+The standalone operator tool in infrastructure/sandbox is outside FastAPI, the AI
+worker and application configuration. It accepts only an immutable local image ID
+and explicit operator opt-in. Five fixed fixtures have no repository/source/command
+input. The tool controls the local desktop-linux Docker endpoint and therefore has
+operator privileges; this is not the restricted production launcher design.
+
+The Docker build context allowlists only Dockerfile and probe.py. No host paths,
+credentials, socket, package cache or app environment are mounted or forwarded.
+Containers have network none, UID/GID 65532, read-only root, no-new-privileges,
+dropped capabilities, built-in seccomp, private PID/cgroup namespaces, IPC none,
+128 MiB memory and swap cap, half CPU, 32 PIDs, 8 MiB tmpfs and no persistent log
+driver. Output is read through capped pipes. Actual configuration is checked before
+starting each fixture. These prototype limits differ from the inert M8 proposal;
+M8 previews are not silently upgraded to a new isolation profile.
+
+The trusted fixed probe writes an original and replacement fixture to container
+tmpfs and parses the replacement with ast.parse. This does not execute imports,
+apply an approved GitHub patch or integrate with application execution records.
+Other cases test bounded PID exhaustion, cgroup OOM termination, timeout and a
+scheduled harness cancellation. Exact owned containers are removed in finally.
+Process death or daemon failure can interrupt cleanup; no orphan recovery service
+is implemented. No automatic queue retries exist.
+
+Threat model and trust boundaries: [MILESTONE_9_THREAT_MODEL.md](MILESTONE_9_THREAT_MODEL.md).
+The required worker/launcher separation and image provenance are unverified. A
+dedicated sandbox VM/service needs review before hostile code is accepted. The
+API retains hard confirmation denial, Literal false response contracts and no
+Docker integration. The existing preparation UI remains honest and disabled.
+Safe voice additions navigate to automation for last result, failed validation
+and tested patch requests; they do not claim a result exists or start execution.

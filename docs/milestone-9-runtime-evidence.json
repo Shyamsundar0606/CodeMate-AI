@@ -1,0 +1,94 @@
+{
+  "version": "m9-fixture-v1",
+  "at": "2026-10-22T19:05:19.864112+00:00",
+  "image_id": "sha256:753c49dfd11314e64f6abf877c6d5e2f58304ed628215f11855960058d6f5430",
+  "execution_enabled": false,
+  "provenance_verified": false,
+  "worker_separation_verified": false,
+  "source_sha256": {
+    "Dockerfile": "476f242720fbb7dd641086260fbc95cbe589ad7f8cb9abc3bcaca0f3f9a6c100",
+    "probe.py": "8ed9aa738be80ddc52b8b295ce383d24b61255a043f276bc94bd09c03112571c",
+    "verify.py": "4bba735a76cc6e2a5650260cf8e99d130e2b27cd044cd30b3b34562345165516"
+  },
+  "cases": [
+    {
+      "case": "baseline",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 0,
+      "timed_out": false,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 0,
+      "evidence": {
+        "checks": {
+          "non_root": true,
+          "root_read_only": true,
+          "no_new_privileges": true,
+          "no_effective_capabilities": true,
+          "seccomp_filter": true,
+          "no_socket_or_host_paths": true,
+          "no_app_environment": true,
+          "external_ip_blocked": true,
+          "host_database_blocked": true,
+          "host_ollama_blocked": true,
+          "memory_limit": true,
+          "pid_limit": true,
+          "cpu_limit": true,
+          "tmpfs_limit": true,
+          "original_unchanged": true,
+          "patched_hash": true
+        },
+        "after_sha256": "ba1a531f581d2e6094e978ed6f7aca7a8d92eeb62c6e7ad73ee692f7f18bc772"
+      }
+    },
+    {
+      "case": "pids",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 0,
+      "timed_out": false,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 0,
+      "evidence": {
+        "pid_limit_enforced": true,
+        "children": 31
+      }
+    },
+    {
+      "case": "memory",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 137,
+      "timed_out": false,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 137,
+      "oom_killed": true
+    },
+    {
+      "case": "timeout",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 1,
+      "timed_out": true,
+      "cancellation_requested": false,
+      "configuration_checked": true,
+      "exit_code": 137,
+      "runtime_stopped": true
+    },
+    {
+      "case": "cancel",
+      "passed": true,
+      "cleanup": "removed",
+      "client_exit_code": 1,
+      "timed_out": false,
+      "cancellation_requested": true,
+      "configuration_checked": true,
+      "exit_code": 137,
+      "runtime_stopped": true
+    }
+  ],
+  "fixture_checks_passed": true
+}

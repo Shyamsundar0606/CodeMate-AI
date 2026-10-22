@@ -713,3 +713,75 @@ An unavailable daemon does not affect source review; an unavailable database
 prevents durable previews and is reported as an error. No real sandbox self-test
 or opt-in execution suite is provided because no runtime service is implemented.
 The prerequisites and unverified negative tests are in MILESTONE_8_VERIFICATION.md.
+
+## Milestone 9 operator-only fixture verification
+
+This is an opt-in trusted fixture probe on the existing shared local Docker engine,
+not a verified service for hostile repositories. Run is still disabled. Never
+point it at an untrusted image or run probe.py directly on Windows/WSL. The local
+image ID is immutable content identity, not independently verified provenance.
+
+```powershell
+Set-Location 'D:\shyam\Projects\CodeMate-AI'
+docker desktop status
+# If stopped: docker desktop start
+wsl --status
+docker context show
+docker --context desktop-linux info --format '{{.OSType}} {{.ServerVersion}} {{json .SecurityOptions}}'
+docker --context desktop-linux build --network=none --pull=false --tag codemate-sandbox-probe:m9-fixture-v1 infrastructure/sandbox
+if ($LASTEXITCODE -ne 0) { throw 'Probe image build failed' }
+$probeImageId = docker --context desktop-linux image inspect codemate-sandbox-probe:m9-fixture-v1 --format '{{.Id}}'
+if ($LASTEXITCODE -ne 0) { throw 'Probe image inspection failed' }
+docker --context desktop-linux image inspect $probeImageId --format '{{json .RepoDigests}}'
+.\backend\.venv\Scripts\python.exe infrastructure/sandbox/verify.py --image $probeImageId --accept-local-docker-risk
+if ($LASTEXITCODE -ne 0) { throw 'Fixture checks failed; execution stays disabled' }
+docker --context desktop-linux ps -a --filter label=org.codemate.sandbox.verification --format '{{.ID}} {{.Names}} {{.Status}}'
+```
+
+The base image digest is pinned in Dockerfile. An unavailable base/cache can prevent
+the offline build; do not replace the digest with latest. The local build may have
+no registry RepoDigest. Record its full image ID, source hashes and build evidence;
+neither a tag nor a locally generated attestation is upstream provenance approval.
+
+Five fixtures inspect actual configuration, root/non-root/capability/seccomp state,
+fixed network attempts, PID and memory exhaustion, timeout, scheduled cancellation
+and cleanup. CPU quota and tmpfs size are observed configuration, not stress tests.
+No personal repository, credential file or unrelated container is read or modified.
+Output is bounded and runtime log storage is disabled. The tool removes only its
+own exact container IDs. If the process/daemon crashes, list the labeled containers
+above and inspect each exact identity manually; no automatic cleanup/recovery
+service exists. Never use prune, down -v or delete another project's container.
+
+Continue the existing application startup separately:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\infrastructure\start-postgres.ps1
+Set-Location backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m alembic current
+.\.venv\Scripts\python.exe -m alembic check
+# Expected: 0006_sandbox_previews. No Milestone 9 migration is needed for this scope.
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-proxy-headers
+# Separate terminal, if investigations are needed:
+# .\.venv\Scripts\python.exe scripts\ai_worker.py
+```
+
+```powershell
+# Separate terminal:
+Set-Location 'D:\shyam\Projects\CodeMate-AI\frontend'
+npm.cmd ci
+npm.cmd run dev
+# Separate terminal, existing Ollama only:
+ollama list
+Invoke-RestMethod http://127.0.0.1:11434/api/tags
+```
+
+There is no sandbox-worker startup command or execution enable setting. Do not
+grant Docker control to FastAPI or the existing AI worker. Reopen automation to
+review preparation history and cancellation. No real job/log/result is presented.
+Disabling execution requires no action: the application gate is hard-coded false.
+
+Standard CI runs mocked prototype-contract tests, not the Docker probe. From backend:
+`python -m ruff check . ../infrastructure/sandbox --config pyproject.toml` and the
+corresponding `ruff format --check` cover both source trees. Full current results,
+dependency findings and remaining blockers are in MILESTONE_9_VERIFICATION.md.

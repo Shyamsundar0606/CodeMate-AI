@@ -1720,3 +1720,39 @@ the ordinary suite and is not included in the 496 count. These supersede earlier
 partial/backend counts for current source verification. Frontend files were not
 changed by this correction. Existing gate/ownership/CSRF/source/citation/approval
 and preview regressions remain passing. No tests were weakened or disabled.
+
+### Milestone 9 fixture infrastructure preparation, 2026-10-22
+
+Started from clean main 2bc6b71 on feature/milestone-9-isolated-execution, preserving
+all four original stashes. Added a threat model and a standalone opt-in Docker
+prototype outside the API/AI worker. An offline digest-pinned build and five real
+fixed fixtures verified selected non-root, read-only-root, capability/seccomp,
+network, PID, memory, timeout, scheduled cancellation and cleanup behavior. The
+report records exact image/source identities and observed results. No arbitrary
+source, command, mount or application request is accepted by the prototype.
+
+Worker identity separation, upstream image provenance, a reviewed hostile-code
+VM boundary, durable execution recovery and approved-patch integration remain
+unverified. In accordance with the required implementation order, no executable
+queue, materializer, migration 0007 or application Run path was added. M8 exact
+previews, confirmation denial, cancellation/history and inert UI remain active.
+New voice phrases navigate only. Fixture success cannot enable execution.
+
+Current verification: 524 backend tests passed with warnings as errors; 167 frontend
+tests passed. The affected 25 operator contract tests and five real containers
+were rerun after the final inspection tightening. Ruff lint/format, Alembic live
+head/metadata checks, guarded migration tests, pip check, ESLint, TypeScript and
+production build passed. Current database head remains 0006_sandbox_previews.
+
+The initial Next.js 16.4.0 build/audit identified new critical advisories. The user
+approved a minimal patch: Next.js and matching ESLint config are pinned to 16.4.2,
+with no forced dependency changes. Production npm audit is now clean. Five high
+dev-tooling findings remain. An isolated Python advisory audit found three unique
+IDs across certifi, cryptography and pytest, with duplicate reported entries; these
+remain open and are documented rather than silently counted as a passing audit.
+
+See [MILESTONE_9_VERIFICATION.md](MILESTONE_9_VERIFICATION.md) for exact evidence,
+scope/status distinctions, all outstanding blockers, the 18-file review allowlist
+and PowerShell setup. No application patch was applied or validation executed.
+The verified-runner definition of done is not met. No files staged, committed,
+pushed or merged; no Milestone 10 work.
