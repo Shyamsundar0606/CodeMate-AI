@@ -1,5 +1,32 @@
 # CodeMate architecture - Milestones 1-5
 
+## Milestone 11 trusted application hardening
+
+The outer pure ASGI protection layer bounds uploads by bytes and total time,
+assigns server request IDs, validates correlation UUIDs and adds security headers,
+including on errors and CORS preflight. Sanitized JSON logs use route templates;
+bodies, raw paths, queries, tokens, prompts and tracebacks are excluded. ContextVar
+isolation separates concurrent requests. Queue events link HTTP context to the
+existing investigation UUID; the trusted AI worker correlates by that UUID without
+persisting private HTTP context.
+
+An ADMIN-only, no-store metrics endpoint exposes lock-protected process-local
+counts and duration buckets. Labels contain templates, bounded methods and status
+classes. Counters reset on restart. Liveness is independent of optional services;
+readiness checks the database and migration head, with sanitized failure/recovery.
+Existing database timeouts, rollback and bounded upstream clients remain. Pool
+connections now recycle after 30 minutes. There is no schema change.
+
+Production settings reject placeholder signing/database secrets, test database
+identities and wildcard origins. Production API docs are disabled. Frontend CSP
+restricts origins while preserving hydration/voice; inline script/style remain
+allowed. Default API startup binds loopback and ignores forwarded headers. Public
+TLS ingress is a design, not a verified deployment. DEPLOYMENT.md details budgets
+and the existing stateless access-token logout limitation.
+
+All six sandbox blockers remain enforced. No executor, executable queue, Docker
+control endpoint, patch application or repository command path was added.
+
 ```mermaid
 flowchart LR
     UI[Next.js public landing / system status] -->|health requests| API[FastAPI modular monolith]

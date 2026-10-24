@@ -8,6 +8,7 @@ from sqlalchemy import select, text
 from app.ai.errors import AIError
 from app.ai.graph import build_graph
 from app.ai.schemas import Report
+from app.core.observability import correlation
 from app.integrations.github.authorization_cache import AuthorizationCache
 from app.integrations.github.exceptions import GitHubError
 from app.models import AIInvestigation, User
@@ -90,7 +91,11 @@ class InvestigationWorker:
                         item.started_at = datetime.now(UTC)
                         item.completed_at = None
                         db.commit()
-                        self.execute(db, item)
+                        correlation_token = correlation.set({"correlation_id": str(identity)})
+                        try:
+                            self.execute(db, item)
+                        finally:
+                            correlation.reset(correlation_token)
                         return True
                 return False
             finally:

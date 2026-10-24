@@ -1,3 +1,5 @@
+import json
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -99,6 +101,9 @@ class InvestigationService:
         )
         self.db.add(item)
         self.db.commit()
+        logging.getLogger("codemate.ai").info(
+            json.dumps({"event": "ai_queued", "investigation_id": str(item.id)})
+        )
         return self.response(item)
 
     def history(self, page: int, size: int) -> History:

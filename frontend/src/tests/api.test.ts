@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { ApiClient } from "@/lib/api/client";
+import { ApiClient, ApiError, apiErrorMessage } from "@/lib/api/client";
 import { registerAccount } from "@/lib/api/auth";
 import { userSchema } from "@/types/api";
 import { credentials, response, user } from "./fixtures";
@@ -26,4 +26,24 @@ it.each(["https://user:secret@localhost", "javascript:alert(1)", "https://localh
 it.each([[422, "AUTOMATION_POLICY", "Model citations do not match the retrieved source evidence."], [429, "AUTOMATION_RATE_LIMIT", "Wait one minute before another automation request."]])("preserves safe automation errors (%s)", async (status, code, message) => {
  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response({ detail: { code, message } }, status)));
  await expect(new ApiClient().request("/api/v1/auth/automation/sessions/test/proposals")).rejects.toMatchObject({ status, code, message });
+});
+
+it("sends a generated correlation ID and exposes only a validated diagnostic ID", async () => {
+  const identity = "3c337168-8a43-4f3e-bbaf-cf055ec41101";
+  const fetcher = vi.fn().mockResolvedValue(new Response("{}", { status: 503, headers: { "X-Request-ID": identity } }));
+  vi.stubGlobal("fetch", fetcher);
+  const error = await new ApiClient().request("/test").catch(error => error);
+  expect(error).toBeInstanceOf(ApiError);
+  if (!(error instanceof ApiError)) throw new Error("Expected a diagnostic API error");
+  expect(error.requestId).toBe(identity);
+  expect(apiErrorMessage(error)).toContain(identity);
+  expect(fetcher.mock.calls[0][1].headers.get("X-Correlation-ID")).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+it("does not surface malformed request ID data", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 503, headers: { "X-Request-ID": "private-untrusted-value" } })));
+  const error = await new ApiClient().request("/test").catch(error => error);
+  if (!(error instanceof ApiError)) throw new Error("Expected an API error");
+  expect(error.requestId).toBeUndefined();
+  expect(apiErrorMessage(error)).not.toContain("private-untrusted-value");
 });
