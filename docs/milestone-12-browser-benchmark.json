@@ -1,0 +1,10 @@
+{
+  "browser": "Microsoft Edge",
+  "profile": "local production build, controlled upstreams, real guarded DB",
+  "operation": "dashboard navigation to verified account heading",
+  "samples": 5,
+  "median_ms": 232.15,
+  "p95_ms": 324.454,
+  "errors": 0,
+  "comparison": "No comparable Milestone 11 browser sample was recorded."
+}

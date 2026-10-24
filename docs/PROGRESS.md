@@ -1,5 +1,20 @@
 # Progress
 
+## Milestone 12 final portfolio release, 2026-10-24
+
+Resumed after explicit dependency-remediation approval. Zod 4.6.6 and scoped
+Undici 8.12.2 replace affected npm versions. Added independent browser byte,
+tree and schema limits. Fresh Python auditing required compatible filelock 4.2.1
+with a matching runtime floor. Current dependency audits are clean. Extended Edge
+acceptance covers metrics authorization and missing-cookie restoration; corrected
+an ambiguous model-unavailable locator. Updated stale landing/dashboard copy, review
+readability and keyboard scrolling. Demo, checklist and technical/interview material
+distinguish implemented features from future work. MILESTONE_12_VERIFICATION.md
+records final counts, live versus fixture evidence, exact allowlist and limitations.
+Sandbox execution remains disabled and GitHub read-only. No deployment, staging
+or commit is performed. Local readiness is qualified, not public certification.
+
+
 ## Milestone 11, 2026-10-23
 
 Trusted application hardening is implemented on

@@ -2,39 +2,39 @@ import { z } from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "@/providers/auth-provider";
-const claim = z.object({ evidence_id: z.string(), quote: z.string() });
+const claim = z.object({ evidence_id: z.string().max(262144), quote: z.string().max(262144) });
 const finding = z.object({
-  id: z.string(), title: z.string(), description: z.string(),
+  id: z.string().max(262144), title: z.string().max(262144), description: z.string().max(262144),
   severity: z.enum(["INFO", "LOW", "MEDIUM", "HIGH"]), confidence: z.enum(["LOW", "MEDIUM", "HIGH"]),
-  evidence: z.array(claim), root_cause_hypothesis: z.string(), suggested_fix: z.string(),
-  verification_steps: z.array(z.string()),
+  evidence: z.array(claim).max(100), root_cause_hypothesis: z.string().max(262144), suggested_fix: z.string().max(262144),
+  verification_steps: z.array(z.string().max(262144)).max(100),
 });
 const evidence = z.object({
-  id: z.string(), workflow_run_id: z.number(), job_id: z.number().nullable(), step: z.string().nullable(),
-  source: z.enum(["job_log", "job_metadata", "run_metadata"]), excerpt: z.string(),
-  line_start: z.number().nullable(), line_end: z.number().nullable(), timestamp: z.string().nullable(),
+  id: z.string().max(262144), workflow_run_id: z.number(), job_id: z.number().nullable(), step: z.string().max(262144).nullable(),
+  source: z.enum(["job_log", "job_metadata", "run_metadata"]), excerpt: z.string().max(262144),
+  line_start: z.number().nullable(), line_end: z.number().nullable(), timestamp: z.string().max(262144).nullable(),
   redacted: z.boolean(), truncated: z.boolean(),
 });
 export const investigationSchema = z.object({
-  id: z.string().uuid(), owner: z.string(), repo: z.string(), workflow_run_id: z.number(),
+  id: z.string().max(262144).uuid(), owner: z.string().max(262144), repo: z.string().max(262144), workflow_run_id: z.number(),
   installation_id: z.number(), status: z.enum(["queued", "running", "completed", "failed", "cancelled"]),
-  stage: z.string(), attempts: z.number(), max_attempts: z.number(),
-  created_at: z.string(), started_at: z.string().nullable(), completed_at: z.string().nullable(),
-  error_code: z.string().nullable(), error_message: z.string().nullable(),
+  stage: z.string().max(262144), attempts: z.number(), max_attempts: z.number(),
+  created_at: z.string().max(262144), started_at: z.string().max(262144).nullable(), completed_at: z.string().max(262144).nullable(),
+  error_code: z.string().max(262144).nullable(), error_message: z.string().max(262144).nullable(),
   report: z.object({
-    summary: z.string(), failure_category: z.string(), findings: z.array(finding),
-    recommended_actions: z.array(z.string()), limitations: z.array(z.string()),
-    workflow_name: z.string().nullable(), commit_sha: z.string(), branch: z.string().nullable(),
-    run_conclusion: z.string().nullable(), analyzed_job_ids: z.array(z.number()),
-    model_name: z.string().nullable(), evidence_completeness: z.enum(["complete", "partial", "missing"]),
-    evidence: z.array(evidence),
+    summary: z.string().max(262144), failure_category: z.string().max(262144), findings: z.array(finding).max(100),
+    recommended_actions: z.array(z.string().max(262144)).max(100), limitations: z.array(z.string().max(262144)).max(100),
+    workflow_name: z.string().max(262144).nullable(), commit_sha: z.string().max(262144), branch: z.string().max(262144).nullable(),
+    run_conclusion: z.string().max(262144).nullable(), analyzed_job_ids: z.array(z.number()).max(100),
+    model_name: z.string().max(262144).nullable(), evidence_completeness: z.enum(["complete", "partial", "missing"]),
+    evidence: z.array(evidence).max(100),
   }).nullable(),
 });
 export const aiStatusSchema = z.object({
-  available: z.boolean(), model_available: z.boolean(), selected_model: z.string(), message: z.string(),
+  available: z.boolean(), model_available: z.boolean(), selected_model: z.string().max(262144), message: z.string().max(262144),
 });
 export const historySchema = z.object({
-  items: z.array(investigationSchema), page: z.number(), has_next: z.boolean(),
+  items: z.array(investigationSchema).max(100), page: z.number(), has_next: z.boolean(),
   completed_count: z.number(), failed_count: z.number(),
 });
 export type Investigation = z.infer<typeof investigationSchema>;

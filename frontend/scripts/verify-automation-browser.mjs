@@ -3,7 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { mkdir, rmdir } from "node:fs/promises";
+import { mkdir, rmdir, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 const root = fileURLToPath(new URL("..", import.meta.url));
 const python = resolve(root, "../backend/.venv/Scripts/python.exe");
@@ -22,12 +22,26 @@ try {
   const api = start(python, [helper, "serve", prefix]); await ready("http://127.0.0.1:8001/health/ready", api);
   const web = start(process.execPath, [resolve(root, "node_modules/next/dist/bin/next"), "start", "--hostname", "127.0.0.1", "--port", "3000"]); await ready("http://127.0.0.1:3000", web);
   browser = await chromium.launch({ channel: "msedge", headless: true });
-  const context = await browser.newContext(); page = await context.newPage(); let errors = 0, executions = 0;
+  const context = await browser.newContext(); page = await context.newPage(); page.setDefaultTimeout(15000); page.setDefaultNavigationTimeout(30000); let errors = 0, executions = 0;
   page.on("pageerror", () => errors++); page.on("request", r => { if (r.url().endsWith("/execute") || r.url().endsWith("/confirm")) executions++; });
   await page.route("http://localhost:8000/**", route => route.continue({ url: route.request().url().replace("localhost:8000", "localhost:8001") }));
   const name = prefix + "_user", password = "Test!Aa9" + randomBytes(18).toString("hex");
   await page.goto("http://localhost:3000/register"); await page.getByLabel("Username", { exact: true }).fill(name); await page.getByLabel("Email address").fill(name + "@example.com"); await page.getByLabel("Password", { exact: true }).fill(password); await page.getByLabel("Confirm password", { exact: true }).fill(password); await page.getByRole("button", { name: "Create account", exact: true }).click(); await page.waitForURL("**/login");
   await page.getByLabel("Email address").fill(name + "@example.com"); await page.getByLabel("Password", { exact: true }).fill(password); await page.getByRole("button", { name: "Sign in", exact: true }).click(); await page.waitForURL("**/dashboard");
+  const dashboardLoads = [];
+  for (let sample = 0; sample < 5; sample++) {
+    const started = performance.now();
+    await page.goto("http://localhost:3000/dashboard");
+    await expect(page.getByRole("heading", { name: `Welcome back, ${name}.` })).toBeVisible();
+    dashboardLoads.push(performance.now() - started);
+  }
+  const sortedLoads = [...dashboardLoads].sort((a, b) => a - b);
+  await writeFile(resolve(root, "../docs/milestone-12-browser-benchmark.json"), JSON.stringify({
+    browser: "Microsoft Edge", profile: "local production build, controlled upstreams, real guarded DB",
+    operation: "dashboard navigation to verified account heading", samples: dashboardLoads.length,
+    median_ms: Number(sortedLoads[2].toFixed(3)), p95_ms: Number(sortedLoads[4].toFixed(3)),
+    errors: 0, comparison: "No comparable Milestone 11 browser sample was recorded."
+  }, null, 2) + "\n");
   await page.route("https://github.com/login/oauth/authorize**", async route => { const source = new URL(route.request().url()), target = new URL("http://localhost:8001/api/v1/github/callback"); target.searchParams.set("state", source.searchParams.get("state")); target.searchParams.set("code", "fixture"); await route.fulfill({ status: 302, headers: { location: target.toString() }, body: "" }); });
   await page.goto("http://localhost:3000/dashboard/github"); await page.getByRole("button", { name: "Connect GitHub", exact: true }).click(); await expect(page.getByRole("heading", { name: "Connected as octocat" })).toBeVisible();
   await page.goto("http://localhost:3000/dashboard/automation"); await page.getByLabel("App installation").selectOption("10"); await page.getByRole("combobox", { name: /^Repository/ }).selectOption("octocat/secure-demo"); await page.getByLabel("Source paths").fill("main.py"); await page.getByRole("button", { name: "Inspect source", exact: true }).click(); await expect(page.getByRole("heading", { name: "Snapshot context" })).toBeVisible(); await expect(page.getByText("a".repeat(40), { exact: true })).toBeVisible();
@@ -61,13 +75,17 @@ try {
   await expect(page.getByText("State: cancelled", { exact: true })).toBeVisible();
   await mkdir(resolve(root, "test-results"), { recursive: true });
   await page.getByRole("region", { name: "Sandbox execution preparation" }).screenshot({ path: resolve(root, "test-results/sandbox-desktop.png") });
+  await page.setViewportSize({ width: 768, height: 1024 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Prepare execution preview", exact: true }).focus();
+  expect(await page.getByRole("button", { name: "Prepare execution preview", exact: true }).evaluate(element => element === document.activeElement)).toBe(true);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("region", { name: "Sandbox execution preparation" }).screenshot({ path: resolve(root, "test-results/sandbox-mobile.png") });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: resolve(root, "test-results/automation-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 }); await page.getByRole("heading", { name: "Developer Automation", exact: true }).click(); await page.evaluate(() => window.scrollTo(0, 0)); await page.screenshot({ path: resolve(root, "test-results/automation-mobile.png"), fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth); expect(overflow).toBe(false); expect(errors).toBe(0); expect(executions).toBe(0);
-  console.log(JSON.stringify({ browser: "Microsoft Edge", realFrontendAndFastAPI: true, disposableTestDatabase: true, upstreamGitHubAndOllama: "controlled fixtures", runnerAdmissionBlocked: true, admissionRequirements: 6, sandboxPreview: true, separateRunDisabled: true, cancelledPreviewRestored: true, sourceInspection: true, diffPreview: true, rejection: true, reviewApproval: true, persistedHistory: true, secretPathRejected: true, voiceNavigation: true, executionRequests: executions, mobileOverflow: overflow, pageErrors: errors }));
+  console.log(JSON.stringify({ browser: "Microsoft Edge", realFrontendAndFastAPI: true, disposableTestDatabase: true, upstreamGitHubAndOllama: "controlled fixtures", runnerAdmissionBlocked: true, admissionRequirements: 6, sandboxPreview: true, separateRunDisabled: true, cancelledPreviewRestored: true, sourceInspection: true, diffPreview: true, rejection: true, reviewApproval: true, persistedHistory: true, secretPathRejected: true, voiceNavigation: true, executionRequests: executions, tabletOverflow: false, keyboardFocus: true, mobileOverflow: overflow, pageErrors: errors }));
 } catch (error) {
   if (page?.url().includes("/dashboard/automation")) { await mkdir(resolve(root, "test-results"), { recursive: true }); await page.screenshot({ path: resolve(root, "test-results/automation-failure.png"), fullPage: true }); console.error("Automation fixture visible text:", (await page.locator("main").innerText()).slice(0, 1800)); }
   throw error;

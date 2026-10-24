@@ -40,7 +40,14 @@ test("mobile keyboard navigation and cross-tab session invalidation", async ({ p
 });
 test("administrator directory uses the backend role and enforces read-only access", async ({ page }) => {
  const data = await register(page, "admin"); execFileSync(resolve("../backend/.venv/Scripts/python.exe"), [resolve("scripts/e2e_backend.py"), "promote-test-admin", prefix!], { windowsHide: true });
- await login(page, data.email); await navigate(page, "User directory"); await expect(page.getByRole("heading", { name: "User directory", exact: true })).toBeVisible(); await expect(page.getByRole("cell", { name: data.username, exact: true })).toBeVisible(); await expect(page.getByRole("button", { name: "Previous" })).toBeDisabled(); await expect(page.getByRole("button", { name: /delete|promote|edit/i })).toHaveCount(0); await page.screenshot({ path: "test-results/admin-desktop.png", fullPage: true });
+ await login(page, data.email);
+ const signIn = await page.request.post("http://localhost:8001/api/v1/auth/login", { headers: { "X-CodeMate-Request": "1", Origin: "http://localhost:3000" }, data: { email: data.email, password } });
+ expect(signIn.status()).toBe(200);
+ const adminToken = (await signIn.json()).access_token;
+ const metrics = await page.request.get("http://localhost:8001/api/v1/operations/metrics", { headers: { Authorization: `Bearer ${adminToken}` } });
+ expect(metrics.status()).toBe(200); expect(metrics.headers()["cache-control"]).toBe("no-store");
+ expect((await metrics.json()).scope).toBe("process"); expect(await metrics.text()).not.toContain(data.email);
+ await navigate(page, "User directory"); await expect(page.getByRole("heading", { name: "User directory", exact: true })).toBeVisible(); await expect(page.getByRole("cell", { name: data.username, exact: true })).toBeVisible(); await expect(page.getByRole("button", { name: "Previous" })).toBeDisabled(); await expect(page.getByRole("button", { name: /delete|promote|edit/i })).toHaveCount(0); await page.screenshot({ path: "test-results/admin-desktop.png", fullPage: true });
 });
 
 test("network outages hide protected content and local signout reports unconfirmed revocation", async ({ page }) => {
@@ -98,7 +105,7 @@ test("controlled GitHub authorization, repository activity, failed jobs, logs an
  await page.getByRole("link",{name:"Investigation history",exact:true}).click();
  await expect(page.getByText(/Completed: 1/)).toBeVisible();
  await page.route("http://localhost:8001/api/v1/ai/status",route=>route.fulfill({status:200,contentType:"application/json",body:JSON.stringify({available:false,model_available:false,selected_model:"qwen2.5-coder:3b",message:"Ollama is unavailable; other features remain available."})}));
- await page.getByRole("button",{name:"Check local model"}).click();await expect(page.getByText(/Ollama is unavailable/)).toBeVisible();
+ await page.getByRole("button",{name:"Check local model"}).click();await expect(page.getByText("Ollama is unavailable; other features remain available.", { exact: true })).toBeVisible();
  await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
  await page.screenshot({path:"test-results/ai-history-mobile.png",fullPage:true});
  await page.setViewportSize({width:1440,height:900});await page.unroute("http://localhost:8001/api/v1/ai/status");
@@ -107,4 +114,16 @@ test("controlled GitHub authorization, repository activity, failed jobs, logs an
  await page.setViewportSize({width:390,height:844});await page.getByRole("button",{name:"Open navigation"}).click();await navigate(page,"GitHub");await expect(page.getByRole("heading",{name:"Connected as octocat"})).toBeVisible();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);await page.screenshot({path:"test-results/github-connection-mobile.png",fullPage:true});
  await page.getByRole("button",{name:"Disconnect GitHub"}).click();await expect(page.getByRole("dialog",{name:"Disconnect GitHub?"})).toBeVisible();await page.getByRole("button",{name:"Confirm disconnect"}).click();await expect(page.getByRole("heading",{name:"Connect your GitHub account"})).toBeVisible();await expect(page.getByText("Disconnected. GitHub authorization was revoked.")).toBeVisible();
  expect(await page.evaluate(()=>({local:Object.keys(localStorage),session:Object.keys(sessionStorage)}))).toEqual({local:[],session:[]});expect((await context.cookies()).some(c=>c.name.includes("github_state"))).toBe(false);expect(errors).toEqual([]);
+});
+
+
+test("missing refresh cookie restoration and operational metrics enforce real API authorization", async ({ page, context }) => {
+ const data = await register(page, "voice"); await login(page, data.email);
+ const apiLogin = await context.request.post("http://localhost:8001/api/v1/auth/login", { headers: { "X-CodeMate-Request": "1", Origin: "http://localhost:3000" }, data: { email: data.email, password } });
+ expect(apiLogin.status()).toBe(200);
+ const token = (await apiLogin.json()).access_token;
+ expect((await context.request.get("http://localhost:8001/api/v1/operations/metrics")).status()).toBe(401);
+ expect((await context.request.get("http://localhost:8001/api/v1/operations/metrics", { headers: { Authorization: `Bearer ${token}` } })).status()).toBe(403);
+ await context.clearCookies(); await page.reload(); await expect(page).toHaveURL(/\/login$/);
+ await expect(page.getByRole("heading", { name: `Welcome back, ${data.username}.` })).toHaveCount(0);
 });
