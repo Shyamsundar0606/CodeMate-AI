@@ -1,5 +1,21 @@
 # CodeMate architecture - Milestones 1-5
 
+## Milestone 12 response validation boundary
+
+The browser caps decoded JSON response bytes at 4 MiB before JSON.parse, including
+error responses. WAV responses are restricted to the existing speech endpoint and
+16 MiB. A pre-schema iterative guard limits nesting to 32, total nodes to 20000,
+arrays to 1000, record keys to 512, key length to 1024 and text to 262144 characters.
+Response schemas impose array caps of 100 or tighter existing limits and bounded
+strings, including explicit Zod 4 record key/value schemas. Forms retain narrower
+password/username/email limits. These client defenses complement backend upload,
+source, model and authorization limits; they do not authorize data or execution.
+
+Zod is pinned to patched 4.6.6. Only jsdom's Undici is overridden to compatible
+8.12.2. The Python speech dependency chain receives a filelock 4.2.1 security floor.
+The verification report records current audits and remaining operational limits.
+
+
 ## Milestone 11 trusted application hardening
 
 The outer pure ASGI protection layer bounds uploads by bytes and total time,

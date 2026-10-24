@@ -1,0 +1,42 @@
+{
+  "phase": "milestone12",
+  "python": "3.12.10",
+  "platform": "Windows",
+  "environment": "test",
+  "transport": "in-process TestClient",
+  "upstream": "controlled GitHub and model fixtures; no real network inference",
+  "source_bytes": 32,
+  "operations": {
+    "health": {
+      "samples": 20,
+      "median_ms": 4.076,
+      "p95_ms": 4.523
+    },
+    "authenticated_account": {
+      "samples": 20,
+      "median_ms": 14.57,
+      "p95_ms": 17.189
+    },
+    "github_repository_listing": {
+      "samples": 20,
+      "median_ms": 26.121,
+      "p95_ms": 42.839
+    },
+    "automation_history": {
+      "samples": 20,
+      "median_ms": 16.864,
+      "p95_ms": 18.281
+    },
+    "execution_preview": {
+      "samples": 20,
+      "median_ms": 29.815,
+      "p95_ms": 33.452
+    },
+    "controlled_ai_explanation": {
+      "samples": 1,
+      "elapsed_ms": 116.098,
+      "p95_ms": null
+    }
+  },
+  "python_tracemalloc_peak_bytes": 572966
+}

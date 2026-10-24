@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { AUDIO_BYTES, InputLimitError, readBounded, readJSON } from "./limits";
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status?: number, public readonly kind: "http" | "network" | "timeout" | "protocol" = "http", public readonly code?: string, public readonly retryAfter?: number, public requestId?: string) {
@@ -39,8 +40,8 @@ export class ApiClient {
       if (suppliedId && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(suppliedId)) requestId = suppliedId;
       if (!response.ok) {
         if (path.includes("/sandbox/") || path.includes("/automation/") || path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) {
-          const body = await response.json().catch(() => null);
-          const detail = body?.detail;
+          const body = await readJSON(response).catch(error => { if (error instanceof InputLimitError) throw error; return null; });
+          const detail = body && typeof body === "object" && "detail" in body ? body.detail as { code?: unknown; message?: unknown; retry_after?: unknown } : undefined;
           if (typeof detail?.code === "string" && /^(?:GITHUB|AI|VOICE|AUTOMATION|SANDBOX)_[A-Z_]+$/.test(detail.code) && typeof detail.message === "string") {
             throw new ApiError(detail.message.slice(0, 500), response.status, "http", detail.code, typeof detail.retry_after === "number" ? detail.retry_after : undefined);
           }
@@ -52,20 +53,23 @@ export class ApiClient {
           422: "Check the information you entered and try again.",
           429: "Too many sign-in attempts. Please wait a few minutes and try again.",
         };
+        await response.body?.cancel().catch(() => undefined);
         throw new ApiError(messages[response.status] || "The service could not complete this request. Please try again.", response.status);
       }
       if (response.headers.get("content-type")?.startsWith("audio/wav")) {
         if (schema || !path.endsWith("/voice/speech")) throw new ApiError("The service returned an unexpected response.", undefined, "protocol");
-        return await response.blob() as T;
+        const bytes = await readBounded(response, AUDIO_BYTES);
+        return new Blob([bytes as BlobPart], { type: "audio/wav" }) as T;
       }
       if (response.status === 204) return undefined as T;
       let data: unknown;
-      try { data = await response.json(); } catch { throw new ApiError("The service returned an unexpected response.", undefined, "protocol"); }
+      try { data = await readJSON(response); } catch { throw new ApiError("The service returned an unexpected or oversized response.", undefined, "protocol"); }
       if (!schema) return data as T;
       const parsed = schema.safeParse(data);
       if (!parsed.success) throw new ApiError("The service returned an unexpected response.", undefined, "protocol");
       return parsed.data;
     } catch (error) {
+      if (error instanceof InputLimitError) throw new ApiError("The service returned an oversized response.", undefined, "protocol", undefined, undefined, requestId);
       if (error instanceof ApiError) { error.requestId = requestId; throw error; }
       if (controller.signal.aborted) throw new ApiError("The request timed out. Please try again.", undefined, "timeout");
       throw new ApiError("Cannot reach the API. Check your connection and try again.", undefined, "network");

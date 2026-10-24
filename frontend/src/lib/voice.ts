@@ -1,9 +1,9 @@
 import { z } from "zod";
-export const capabilitiesSchema = z.object({ enabled: z.boolean(), stt_installed: z.boolean(), tts_installed: z.boolean(), ollama_available: z.boolean(), max_recording_seconds: z.number(), max_upload_bytes: z.number(), message: z.string() });
-export const targetSchema = z.object({ owner: z.string(), repo: z.string(), installation_id: z.number(), workflow_run_id: z.number(), status: z.string(), conclusion: z.string().nullable(), connection_id: z.string().uuid() });
-export const replySchema = z.object({ session_id: z.string().uuid(), turn_id: z.string().uuid(), intent: z.string(), message: z.string(), route: z.string().nullable(), confirmation_required: z.boolean(), action_id: z.string().uuid().nullable(), target: targetSchema.nullable(), choices: z.array(z.string()) });
-export const actionSchema = z.object({ message: z.string(), route: z.string().nullable() });
-export const transcriptionSchema = z.object({ text: z.string(), language: z.string() });
+export const capabilitiesSchema = z.object({ enabled: z.boolean(), stt_installed: z.boolean(), tts_installed: z.boolean(), ollama_available: z.boolean(), max_recording_seconds: z.number(), max_upload_bytes: z.number(), message: z.string().max(262144) });
+export const targetSchema = z.object({ owner: z.string().max(262144), repo: z.string().max(262144), installation_id: z.number(), workflow_run_id: z.number(), status: z.string().max(262144), conclusion: z.string().max(262144).nullable(), connection_id: z.string().max(262144).uuid() });
+export const replySchema = z.object({ session_id: z.string().max(262144).uuid(), turn_id: z.string().max(262144).uuid(), intent: z.string().max(262144), message: z.string().max(262144), route: z.string().max(262144).nullable(), confirmation_required: z.boolean(), action_id: z.string().max(262144).uuid().nullable(), target: targetSchema.nullable(), choices: z.array(z.string().max(262144)).max(100) });
+export const actionSchema = z.object({ message: z.string().max(262144), route: z.string().max(262144).nullable() });
+export const transcriptionSchema = z.object({ text: z.string().max(262144), language: z.string().max(262144) });
 export type VoiceReply = z.infer<typeof replySchema>;
 export function safeVoiceRoute(route: string | null) {
   if (!route) return null;

@@ -1,5 +1,6 @@
 """Isolated E2E helper: guarded test role/database; never reads development credentials."""
 
+import hashlib
 import os
 import re
 import secrets
@@ -31,9 +32,7 @@ def main():
         "127.0.0.1",
         5433,
     ):
-        raise SystemExit(
-            "E2E requires the dedicated CodeMate test database and role on 5433"
-        )
+        raise SystemExit("E2E requires the dedicated CodeMate test database and role on 5433")
     os.environ.update(
         DATABASE_URL=value,
         JWT_SECRET_KEY=secrets.token_urlsafe(48),
@@ -50,17 +49,24 @@ def main():
         ):
             raise SystemExit("Live database identity check failed")
     if mode == "prepare":
-        from alembic import command
         from alembic.config import Config
 
+        from alembic import command
+
         command.upgrade(Config(str(BACKEND / "alembic.ini")), "head")
-        # This dedicated test environment is exclusive during this suite.
-        with engine.begin() as connection:
-            connection.execute(text("DELETE FROM login_throttles"))
     elif mode == "cleanup":
         with engine.begin() as connection:
             # Exact known disposable names, no wildcard deletion or truncate.
             for suffix in ("user", "mobile", "admin", "outage", "github", "voice"):
+                # Account-specific throttle rows only; never reset a shared IP bucket.
+                connection.execute(
+                    text("DELETE FROM login_throttles WHERE key=:key"),
+                    {
+                        "key": hashlib.sha256(
+                            f"account:{prefix}_{suffix}@example.com".encode()
+                        ).hexdigest()
+                    },
+                )
                 connection.execute(
                     text("DELETE FROM users WHERE username=:name AND email=:email"),
                     {
@@ -71,31 +77,29 @@ def main():
     elif mode == "promote-test-admin":
         with engine.begin() as connection:
             result = connection.execute(
-                text(
-                    "UPDATE users SET role='ADMIN' WHERE username=:name AND email=:email"
-                ),
+                text("UPDATE users SET role='ADMIN' WHERE username=:name AND email=:email"),
                 {"name": f"{prefix}_admin", "email": f"{prefix}_admin@example.com"},
             )
             if result.rowcount != 1:
-                raise SystemExit(
-                    "Expected disposable test administrator account missing"
-                )
+                raise SystemExit("Expected disposable test administrator account missing")
     elif mode != "serve":
         raise SystemExit("Unsupported E2E helper operation")
     engine.dispose()
     if mode == "serve":
         import uvicorn
+        from cryptography.fernet import Fernet
+
         from app.core.config import Settings
         from app.main import create_app
-        from cryptography.fernet import Fernet
 
         sys.path.insert(0, str(BACKEND / "tests"))
         from contextlib import asynccontextmanager
         from threading import Event, Thread
 
         from ai_mock import MockOllama
-        from app.ai.worker import InvestigationWorker
         from github_mock import MockGitHub
+
+        from app.ai.worker import InvestigationWorker
 
         # Explicit test-only credentials and transport; never read a live App configuration.
         config = Settings(

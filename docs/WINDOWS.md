@@ -1,5 +1,25 @@
 # Windows PowerShell setup and verification
 
+## Milestone 12 acceptance sequence
+
+Use the existing locked installs and guarded database helper. Do not run database
+acceptance concurrently. Run backend pytest -q -W error, then the frontend Edge
+suite, then the automation demo. Rebuild the normal frontend after test:e2e because
+Next regenerates next-env.d.ts with the last build directory. Do not stage that
+generated declaration or ignored screenshots/caches.
+
+Current dependencies require npm ci and the updated backend requirements lock.
+Zod 4 migration includes independent response/resource caps; do not bypass rejected
+oversized responses to make a demonstration pass. Python advisory auditing should
+use a separate audit environment and all lockfile pins; document missing hashes.
+
+Optional live Ollama: with the existing qwen2.5-coder:3b already installed, run
+backend/scripts/verify_local_ai.py from the backend venv after other DB tests stop.
+This uses real local inference and controlled GitHub evidence. Optional synthetic
+Piper/whisper checks and physical hardware steps are separate; see DEMO_GUIDE.md.
+Never download additional models or revoke personal GitHub access for a demo.
+
+
 ## Milestone 11 production-like local verification
 
 DEPLOYMENT.md describes configuration profiles, bounded API startup and TLS design.

@@ -56,3 +56,11 @@ html[data-theme="light"]{color-scheme:light;--bg:#f3f6fc;--surface:#fff;--surfac
 .automation-workbench button:not(.button) { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
 .automation-workbench h3 { margin-top: 1rem; }
 .automation-workbench dialog::backdrop { background: #0009; }
+
+/* Review content stays readable at narrow widths and keyboard-scrollable. */
+.automation-workbench { overflow-wrap: anywhere; }
+.automation-workbench p, .automation-workbench li { line-height: 1.65; }
+.automation-workbench pre { font-size: .8125rem; line-height: 1.6; overflow-wrap: normal; }
+.automation-workbench button { white-space: normal; overflow-wrap: anywhere; }
+.automation-workbench :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.automation-workbench button:disabled { cursor: not-allowed; }

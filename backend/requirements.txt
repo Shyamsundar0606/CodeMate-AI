@@ -19,3 +19,6 @@ langgraph==1.2.14
 # Official local speech runtimes, models are configured separately.
 faster-whisper==1.2.1
 piper-tts==1.8.0
+
+# Security floor for the Hugging Face speech dependency; compatible 4.x release.
+filelock>=4.2.1,<5

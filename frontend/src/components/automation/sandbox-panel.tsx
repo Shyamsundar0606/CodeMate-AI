@@ -57,7 +57,7 @@ export function SandboxPanel({ sessionId, proposalId, pending = false }: { sessi
       <p>Confirmation binding: <code>{preview.binding_hash}</code></p><p>Expires: {new Date(preview.expires_at).toLocaleString()}</p>
       <ul>{preview.preview.files.map(file => <li key={file}>{file}</li>)}</ul><pre tabIndex={0} aria-label="Execution preview diff">{preview.preview.diff}</pre>
       <h3>Expected file hashes (not applied)</h3><ul>{preview.preview.expected_manifest.map(item => <li key={item.path}>{item.path}<p>Before: <code>{item.before_sha256}</code></p><p>Expected after: <code>{item.after_sha256}</code></p></li>)}</ul>
-      <h3>Proposed validation command</h3>{preview.preview.profiles.map(item => <div key={item.id}><pre>{item.argv.join(" ")}</pre><p>{item.description}</p></div>)}
+      <h3>Proposed validation command</h3>{preview.preview.profiles.map(item => <div key={item.id}><pre tabIndex={0} aria-label="Proposed validation command">{item.argv.join(" ")}</pre><p>{item.description}</p></div>)}
       <p>Isolation profile: {preview.preview.isolation.version}. Image digest: unverified. Network: none.</p>
       <p>Proposed limits: {preview.preview.isolation.memory_mib} MiB memory, {preview.preview.isolation.pids} processes, {preview.preview.isolation.timeout_seconds} seconds, {preview.preview.isolation.output_bytes} output bytes. These controls have not been verified.</p>
       <p>Patch not applied. Validation not executed. No exit code or test output exists.</p>

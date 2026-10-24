@@ -17,8 +17,8 @@ from test_sandbox import preview
 
 def test_controlled_demo_benchmark(automation):
     phase = os.environ.get("CODEMATE_BENCHMARK_PHASE")
-    if phase not in {"baseline", "hardened"}:
-        pytest.skip("Explicit CODEMATE_BENCHMARK_PHASE=baseline or hardened required")
+    if phase not in {"baseline", "hardened", "milestone12"}:
+        pytest.skip("Explicit CODEMATE_BENCHMARK_PHASE=baseline, hardened or milestone12 required")
     client, model = automation
     source, _, item = preview(automation)
     routes = {
@@ -69,6 +69,11 @@ def test_controlled_demo_benchmark(automation):
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
     result["python_tracemalloc_peak_bytes"] = peak
-    output = Path(__file__).resolve().parents[2] / "docs" / f"milestone-11-benchmark-{phase}.json"
+    name = (
+        "milestone-12-benchmark.json"
+        if phase == "milestone12"
+        else f"milestone-11-benchmark-{phase}.json"
+    )
+    output = Path(__file__).resolve().parents[2] / "docs" / name
     output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result))
