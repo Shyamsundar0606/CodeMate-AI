@@ -21,13 +21,15 @@ from app.api.routes.automation import mutations as automation_mutations
 from app.api.routes.automation import router as automation_router
 from app.api.routes.github import mutations as github_mutations
 from app.api.routes.github import router as github_router
+from app.api.routes.operations import router as operations_router
 from app.api.routes.sandbox import mutations as sandbox_mutations
 from app.api.routes.sandbox import router as sandbox_router
 from app.api.routes.users import router as users_router
 from app.api.routes.voice import mutations as voice_mutations
 from app.api.routes.voice import router as voice_router
 from app.core.config import Settings
-from app.core.logging import RequestLogMiddleware, protect_external_access_logs
+from app.core.logging import protect_external_access_logs
+from app.core.observability import HTTPProtectionMiddleware, Metrics, configure_logging
 from app.db.session import build_engine, build_session_factory
 from app.integrations.github.authorization_cache import AuthorizationCache
 from app.integrations.github.client import GitHubClient
@@ -45,6 +47,7 @@ def create_app(
 ) -> FastAPI:
     protect_external_access_logs()
     config = settings or Settings()
+    configure_logging(config.app_env)
     if (github_transport is not None or ollama_transport is not None) and config.app_env != "test":
         raise ValueError("Mock GitHub transport is permitted only in the isolated test environment")
     github_client = GitHubClient(config, github_transport)
@@ -62,7 +65,15 @@ def create_app(
             ollama_client.close()
             engine.dispose()
 
-    application = FastAPI(title=config.app_name, version="0.1.0", lifespan=lifespan)
+    application = FastAPI(
+        title=config.app_name,
+        version="0.1.0",
+        lifespan=lifespan,
+        docs_url=None if config.app_env == "production" else "/docs",
+        redoc_url=None if config.app_env == "production" else "/redoc",
+        openapi_url=None if config.app_env == "production" else "/openapi.json",
+    )
+    application.state.metrics = Metrics()
     application.state.automation_gate = BoundedSemaphore(1)
     application.state.voice_gate = BoundedSemaphore(config.voice_max_concurrent_requests)
     application.state.voice_speech = voice_speech
@@ -72,14 +83,22 @@ def create_app(
     application.state.settings = config
     application.state.engine = engine
     application.state.session_factory = build_session_factory(engine)
-    application.add_middleware(RequestLogMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=config.cors_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-CodeMate-Request"],
-        expose_headers=["X-Request-ID"],
+        allow_headers=[
+            "Content-Type",
+            "Authorization",
+            "X-CSRF-Token",
+            "X-CodeMate-Request",
+            "X-Correlation-ID",
+        ],
+        expose_headers=["X-Request-ID", "X-Correlation-ID"],
+    )
+    application.add_middleware(
+        HTTPProtectionMiddleware, settings=config, metrics=application.state.metrics
     )
 
     @application.exception_handler(HTTPException)
@@ -137,6 +156,7 @@ def create_app(
     application.include_router(health_router)
     application.include_router(auth_router)
     application.include_router(users_router)
+    application.include_router(operations_router)
     application.include_router(github_router)
     application.include_router(github_mutations)
     application.include_router(ai_router)

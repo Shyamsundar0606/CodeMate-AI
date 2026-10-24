@@ -2,6 +2,7 @@
 .env.*
 !.env.example
 !.env.test.example
+!backend/.env.production.example
 node_modules/
 .next/
 out/

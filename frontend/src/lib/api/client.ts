@@ -1,13 +1,13 @@
 import type { z } from "zod";
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status?: number, public readonly kind: "http" | "network" | "timeout" | "protocol" = "http", public readonly code?: string, public readonly retryAfter?: number) {
+  constructor(message: string, public readonly status?: number, public readonly kind: "http" | "network" | "timeout" | "protocol" = "http", public readonly code?: string, public readonly retryAfter?: number, public requestId?: string) {
     super(message); this.name = "ApiError";
   }
 }
 
 export function apiErrorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Please try again.";
+  return error instanceof ApiError ? `${error.message}${error.requestId ? ` (Request ${error.requestId})` : ""}` : "Something went wrong. Please try again.";
 }
 
 export class ApiClient {
@@ -27,12 +27,16 @@ export class ApiClient {
     if (options.signal?.aborted) controller.abort();
     options.signal?.addEventListener("abort", abort, { once: true });
     const headers = new Headers(options.headers);
+    headers.set("X-Correlation-ID", crypto.randomUUID());
     headers.set("Accept", "application/json");
     if (options.body && !(options.body instanceof Blob)) headers.set("Content-Type", "application/json");
+    let requestId: string | undefined;
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         ...options, headers, credentials: "include", cache: "no-store", signal: controller.signal,
       });
+      const suppliedId = response.headers.get("X-Request-ID");
+      if (suppliedId && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(suppliedId)) requestId = suppliedId;
       if (!response.ok) {
         if (path.includes("/sandbox/") || path.includes("/automation/") || path.includes("/github/") || (path.includes("/ai/") || path.includes("/voice/"))) {
           const body = await response.json().catch(() => null);
@@ -62,7 +66,7 @@ export class ApiClient {
       if (!parsed.success) throw new ApiError("The service returned an unexpected response.", undefined, "protocol");
       return parsed.data;
     } catch (error) {
-      if (error instanceof ApiError) throw error;
+      if (error instanceof ApiError) { error.requestId = requestId; throw error; }
       if (controller.signal.aborted) throw new ApiError("The request timed out. Please try again.", undefined, "timeout");
       throw new ApiError("Cannot reach the API. Check your connection and try again.", undefined, "network");
     } finally { clearTimeout(timer); options.signal?.removeEventListener("abort", abort); }

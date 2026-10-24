@@ -1,5 +1,19 @@
 # Progress
 
+## Milestone 11, 2026-10-23
+
+Trusted application hardening is implemented on
+feature/milestone-11-production-hardening from main 6ff3715. Added bounded uploads,
+safe JSON correlation, protected metrics, production settings checks, security
+headers, connection recycling and controlled Windows startup/demo documentation.
+Existing bounded AI/GitHub controls remain. The frontend reuses one capability
+parse per render and displays validated diagnostic request IDs. No dependency or
+migration changes were needed. Backend regression passed 562 tests and frontend
+regression passed 175 tests. See MILESTONE_11_VERIFICATION.md for evidence, local
+benchmarks, the exact review allowlist and limitations. Public production readiness
+is not certified. All six sandbox blockers remain. Nothing staged or committed;
+all four stashes are preserved.
+
 Current status: **Milestone 4 IMPLEMENTED, LIVE VERIFICATION PENDING**.
 Milestones 1-3 remain complete. Historical results are retained below; the final
 Milestone 4 entry is current. No Milestone 5 work has started.

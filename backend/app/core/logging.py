@@ -1,43 +1,4 @@
-import json
 import logging
-import time
-import uuid
-
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-from starlette.responses import Response
-
-logger = logging.getLogger("codemate.requests")
-logger.setLevel(logging.INFO)
-if not logger.handlers:
-    logger.addHandler(logging.StreamHandler())
-
-
-class RequestLogMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        # Do not trust supplied IDs or log headers, bodies, URL query strings, or tokens.
-        request.state.request_id = str(uuid.uuid4())
-        started = time.monotonic()
-        response = await call_next(request)
-        response.headers["X-Request-ID"] = request.state.request_id
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        if request.url.path.startswith(
-            ("/api/v1/github", "/api/v1/auth/github", "/api/v1/ai", "/api/v1/auth/ai")
-        ):
-            response.headers["Cache-Control"] = "no-store"
-            response.headers["Referrer-Policy"] = "no-referrer"
-        logger.info(
-            json.dumps(
-                {
-                    "request_id": request.state.request_id,
-                    "method": request.method,
-                    "path": request.url.path,
-                    "status": response.status_code,
-                    "duration_ms": round((time.monotonic() - started) * 1000, 2),
-                }
-            )
-        )
-        return response
 
 
 class SensitiveURLFilter(logging.Filter):

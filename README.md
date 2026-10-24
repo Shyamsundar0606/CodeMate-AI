@@ -1,5 +1,11 @@
 # CodeMate AI
 
+Milestone 11 adds bounded HTTP uploads, sanitized JSON logging and correlation,
+admin-only process metrics, production configuration checks and security headers.
+Sandbox execution remains disabled. See [Milestone 11 verification](docs/MILESTONE_11_VERIFICATION.md)
+and [deployment and controlled demo](docs/DEPLOYMENT.md) for measured results,
+Windows commands and limitations. Public production readiness is not certified.
+
 Local-first Developer & DevOps Voice Agent. Milestones 1-7 provide authentication,
 GitHub exploration, local Ollama/LangGraph diagnosis, voice navigation and reviewed
 patch proposals. Milestone 8 adds durable isolated-execution preparation with a

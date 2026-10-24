@@ -1,5 +1,19 @@
 # Windows PowerShell setup and verification
 
+## Milestone 11 production-like local verification
+
+DEPLOYMENT.md describes configuration profiles, bounded API startup and TLS design.
+From the repository root, infrastructure/start-api.ps1 starts the API on loopback
+with one worker, bounded concurrency and forwarded-header trust disabled. It uses
+the existing backend environment without replacing .env. The new production
+example contains intentionally invalid placeholders only.
+
+Run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File infrastructure/verify-demo.ps1`
+after installing locked dependencies. Use -UseExistingBuild only after building
+the current frontend. Ports 3000 and 8001 must be free; do not run backend pytest
+concurrently. The helper owns its fixture account/child servers and refuses occupied
+ports. It verifies preparation behavior, not real-model quality or sandbox execution.
+
 All commands target D:\shyam\Projects\CodeMate-AI. Do not target VoxHire or use port
 5432. Python 3.12, Docker Desktop/Engine/Compose, and Node are installed in the
 verified environment. If missing, install Python 3.12 from python.org, Docker from

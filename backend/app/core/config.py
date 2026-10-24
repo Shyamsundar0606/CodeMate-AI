@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     piper_speaker_id: int = Field(default=0, ge=0, le=1000)
 
     app_name: str = "CodeMate AI"
+    http_max_body_bytes: int = Field(default=1048576, ge=16384, le=2097152)
+    http_body_timeout_seconds: int = Field(default=15, ge=1, le=60)
     app_env: Literal["development", "test", "production"] = "development"
     database_url: SecretStr
     jwt_secret_key: SecretStr
@@ -188,6 +190,8 @@ class Settings(BaseSettings):
         if not origins:
             raise ValueError("At least one explicit CORS origin is required")
         for origin in origins:
+            if "*" in origin or any(ord(c) <= 32 or ord(c) == 127 for c in origin):
+                raise ValueError("CORS origins cannot contain wildcards or control characters")
             parsed = urlsplit(origin)
             if (
                 parsed.scheme not in {"http", "https"}
@@ -223,6 +227,18 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def secure_production(self) -> "Settings":
         if self.app_env == "production":
+            secret = self.jwt_secret_key.get_secret_value().lower()
+            url = make_url(self.database_url.get_secret_value())
+            if secret.startswith(("test", "example", "changeme", "replace_me")):
+                raise ValueError("Production signing keys must not be test or example values")
+            if url.database == "codemate_test_db" or url.username == "codemate_test_user":
+                raise ValueError("Production cannot use the dedicated test database identity")
+            if (
+                not url.password
+                or len(url.password) < 16
+                or url.password.lower().startswith(("test", "example", "changeme", "replace"))
+            ):
+                raise ValueError("Production requires a non-placeholder database password")
             if not self.cookie_secure or any(
                 not x.startswith("https://") for x in self.cors_origins
             ):

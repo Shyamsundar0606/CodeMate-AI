@@ -35,6 +35,7 @@ def test_secure_production_configuration():
         cookie_secure=True,
         cors_origins=["https://codemate.example"],
         jwt_secret_key=secrets.token_urlsafe(48),
+        database_url="postgresql+psycopg://production_role:unused-fixture-password@localhost/production",
     )
     assert settings.cookie_secure
 
@@ -51,9 +52,10 @@ def test_request_ids_and_readiness(client):
     assert second.headers["x-request-id"] != response.headers["x-request-id"]
 
 
-def test_production_refresh_cookie(settings, registered):
+def test_production_refresh_cookie(settings, registered, monkeypatch):
     from fastapi.testclient import TestClient
 
+    from app.db.session import build_engine
     from app.main import create_app
 
     production = Settings(
@@ -61,7 +63,10 @@ def test_production_refresh_cookie(settings, registered):
         app_env="production",
         cookie_secure=True,
         cors_origins=["https://codemate.example"],
+        database_url="postgresql+psycopg://production_role:unused-fixture-password@localhost/production",
     )
+    # Production validation stays strict; this test alone injects its guarded test engine.
+    monkeypatch.setattr("app.main.build_engine", lambda config: build_engine(settings))
     with TestClient(create_app(production), base_url="https://api.codemate.example") as client:
         response = client.post(
             "/api/v1/auth/login",

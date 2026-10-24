@@ -1,5 +1,6 @@
 """Run the durable local investigation worker, separately from FastAPI."""
 
+import json
 import logging
 import sys
 import time
@@ -9,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.ai.worker import InvestigationWorker
 from app.core.config import Settings
 from app.core.logging import protect_external_access_logs
+from app.core.observability import configure_logging
 from app.db.session import build_engine, build_session_factory
 from app.integrations.github.client import GitHubClient
 from app.integrations.ollama.client import OllamaClient
@@ -17,7 +19,7 @@ from app.integrations.ollama.client import OllamaClient
 def main():
     settings = Settings()
     protect_external_access_logs()
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    configure_logging(settings.app_env, service="codemate-ai-worker")
     engine = build_engine(settings)
     github = GitHubClient(settings)
     ollama = OllamaClient(settings)
@@ -26,8 +28,10 @@ def main():
         while True:
             try:
                 worked = worker.tick()
-            except Exception as exc:
-                logging.getLogger("codemate.ai").error("Worker unavailable: %s", type(exc).__name__)
+            except Exception:
+                logging.getLogger("codemate.ai").error(
+                    json.dumps({"event": "worker_unavailable", "category": "dependency"})
+                )
                 worked = False
             if not worked:
                 time.sleep(2)
